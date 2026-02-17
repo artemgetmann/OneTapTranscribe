@@ -1,17 +1,13 @@
-#if os(iOS)
 import ActivityKit
 import SwiftUI
 import WidgetKit
 
-/// Widget extension for Live Activity
-struct RecordingLiveActivity: Widget {
+struct RecordingLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RecordingAttributes.self) { context in
-            // Lock Screen / Banner UI
-            LockScreenView(context: context)
+            LockScreenRecordingView(context: context)
         } dynamicIsland: { context in
             DynamicIsland {
-                // Expanded Dynamic Island
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         Circle()
@@ -30,25 +26,11 @@ struct RecordingLiveActivity: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.center) {
-                    Text("Recording...")
+                    Text(context.state.isUploading ? "Uploading..." : "Recording...")
                         .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-
-                DynamicIslandExpandedRegion(.bottom) {
-                    Button(intent: StopRecordingIntent()) {
-                        Label("Stop", systemImage: "stop.fill")
-                            .font(.headline)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 8)
-                            .background(.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(20)
-                    }
-                    .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
                 }
             } compactLeading: {
-                // Compact leading (left side of pill)
                 HStack(spacing: 4) {
                     Circle()
                         .fill(.red)
@@ -58,12 +40,10 @@ struct RecordingLiveActivity: Widget {
                         .fontWeight(.semibold)
                 }
             } compactTrailing: {
-                // Compact trailing (right side of pill)
                 Text(formatTime(context.state.elapsedSeconds))
                     .font(.system(.caption, design: .monospaced))
                     .fontWeight(.medium)
             } minimal: {
-                // Minimal (when sharing Dynamic Island)
                 Circle()
                     .fill(.red)
                     .frame(width: 10, height: 10)
@@ -71,24 +51,23 @@ struct RecordingLiveActivity: Widget {
         }
     }
 
-    func formatTime(_ seconds: Int) -> String {
+    private func formatTime(_ seconds: Int) -> String {
         let mins = seconds / 60
         let secs = seconds % 60
         return String(format: "%d:%02d", mins, secs)
     }
 }
 
-/// Lock screen banner view
-struct LockScreenView: View {
+private struct LockScreenRecordingView: View {
     let context: ActivityViewContext<RecordingAttributes>
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             HStack(spacing: 8) {
                 Circle()
                     .fill(.red)
                     .frame(width: 10, height: 10)
-                Text("Recording")
+                Text(context.state.isUploading ? "Uploading" : "Recording")
                     .fontWeight(.semibold)
             }
 
@@ -97,41 +76,13 @@ struct LockScreenView: View {
             Text(formatTime(context.state.elapsedSeconds))
                 .font(.system(.title2, design: .monospaced))
                 .fontWeight(.bold)
-
-            Spacer()
-
-            Button(intent: StopRecordingIntent()) {
-                Image(systemName: "stop.fill")
-                    .font(.title2)
-                    .foregroundColor(.white)
-                    .padding(10)
-                    .background(.red)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
         }
-        .padding()
-        .background(.ultraThinMaterial)
+        .padding(.horizontal)
     }
 
-    func formatTime(_ seconds: Int) -> String {
+    private func formatTime(_ seconds: Int) -> String {
         let mins = seconds / 60
         let secs = seconds % 60
         return String(format: "%d:%02d", mins, secs)
     }
 }
-
-/// Intent for Stop button in Live Activity
-import AppIntents
-
-struct StopRecordingIntent: LiveActivityIntent {
-    static var title: LocalizedStringResource = "Stop Recording"
-    static var description = IntentDescription("Stops the current recording")
-
-    func perform() async throws -> some IntentResult {
-        // This will be handled by the main app
-        // For now, just return success
-        return .result()
-    }
-}
-#endif

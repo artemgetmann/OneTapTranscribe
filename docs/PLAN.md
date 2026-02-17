@@ -163,6 +163,12 @@ Acceptance:
 - Risk: Live Activity action handling edge cases.
   - Mitigation: keep stop action minimal and route through central state store.
 
+## Deferred / Lower Priority
+- Share Sheet transcription shortcut flow and expanded cross-device QA checklist are moved to `docs/LOW_PRIORITY_BACKLOG.md`.
+- Reason:
+1. They do not block the app-first MVP loop (record -> transcribe -> clipboard).
+2. They are leverage items to improve adoption and test discipline after base stability.
+
 ## Shipping Gate (v1)
 Ship only when:
 1. Core loop works end-to-end without manual recovery in normal conditions.

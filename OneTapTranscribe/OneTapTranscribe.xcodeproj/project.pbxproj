@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		CE1F00012F460001008494E7 /* OneTapTranscribeWidgetExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = CE1F00042F460001008494E7 /* OneTapTranscribeWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		CE0EB27B2F451019008494E7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,12 +25,34 @@
 			remoteGlobalIDString = CE0EB26C2F451013008494E7;
 			remoteInfo = OneTapTranscribe;
 		};
+		CE1F00022F460001008494E7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CE0EB2652F451013008494E7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE1F00072F460001008494E7;
+			remoteInfo = OneTapTranscribeWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		CE1F00032F460001008494E7 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				CE1F00012F460001008494E7 /* OneTapTranscribeWidgetExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		CE0EB26D2F451013008494E7 /* OneTapTranscribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OneTapTranscribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE0EB27A2F451019008494E7 /* OneTapTranscribeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OneTapTranscribeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CE0EB2842F451019008494E7 /* OneTapTranscribeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OneTapTranscribeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CE1F00042F460001008494E7 /* OneTapTranscribeWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OneTapTranscribeWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -43,6 +69,11 @@
 		CE0EB2872F451019008494E7 /* OneTapTranscribeUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = OneTapTranscribeUITests;
+			sourceTree = "<group>";
+		};
+		CE1F00052F460001008494E7 /* OneTapTranscribeWidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = OneTapTranscribeWidgetExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +100,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CE1F00062F460001008494E7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +116,7 @@
 				CE0EB26F2F451013008494E7 /* OneTapTranscribe */,
 				CE0EB27D2F451019008494E7 /* OneTapTranscribeTests */,
 				CE0EB2872F451019008494E7 /* OneTapTranscribeUITests */,
+				CE1F00052F460001008494E7 /* OneTapTranscribeWidgetExtension */,
 				CE0EB26E2F451013008494E7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +127,7 @@
 				CE0EB26D2F451013008494E7 /* OneTapTranscribe.app */,
 				CE0EB27A2F451019008494E7 /* OneTapTranscribeTests.xctest */,
 				CE0EB2842F451019008494E7 /* OneTapTranscribeUITests.xctest */,
+				CE1F00042F460001008494E7 /* OneTapTranscribeWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,10 +142,12 @@
 				CE0EB2692F451013008494E7 /* Sources */,
 				CE0EB26A2F451013008494E7 /* Frameworks */,
 				CE0EB26B2F451013008494E7 /* Resources */,
+				CE1F00032F460001008494E7 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				CE1F000A2F460001008494E7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				CE0EB26F2F451013008494E7 /* OneTapTranscribe */,
@@ -163,6 +205,28 @@
 			productReference = CE0EB2842F451019008494E7 /* OneTapTranscribeUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		CE1F00072F460001008494E7 /* OneTapTranscribeWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE1F000D2F460001008494E7 /* Build configuration list for PBXNativeTarget "OneTapTranscribeWidgetExtension" */;
+			buildPhases = (
+				CE1F00092F460001008494E7 /* Sources */,
+				CE1F00062F460001008494E7 /* Frameworks */,
+				CE1F00082F460001008494E7 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				CE1F00052F460001008494E7 /* OneTapTranscribeWidgetExtension */,
+			);
+			name = OneTapTranscribeWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = OneTapTranscribeWidgetExtension;
+			productReference = CE1F00042F460001008494E7 /* OneTapTranscribeWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +248,9 @@
 						CreatedOnToolsVersion = 26.2;
 						TestTargetID = CE0EB26C2F451013008494E7;
 					};
+					CE1F00072F460001008494E7 = {
+						CreatedOnToolsVersion = 26.2;
+					};
 				};
 			};
 			buildConfigurationList = CE0EB2682F451013008494E7 /* Build configuration list for PBXProject "OneTapTranscribe" */;
@@ -203,6 +270,7 @@
 				CE0EB26C2F451013008494E7 /* OneTapTranscribe */,
 				CE0EB2792F451019008494E7 /* OneTapTranscribeTests */,
 				CE0EB2832F451019008494E7 /* OneTapTranscribeUITests */,
+				CE1F00072F460001008494E7 /* OneTapTranscribeWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +291,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		CE0EB2822F451019008494E7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE1F00082F460001008494E7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +328,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CE1F00092F460001008494E7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +347,11 @@
 			isa = PBXTargetDependency;
 			target = CE0EB26C2F451013008494E7 /* OneTapTranscribe */;
 			targetProxy = CE0EB2852F451019008494E7 /* PBXContainerItemProxy */;
+		};
+		CE1F000A2F460001008494E7 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE1F00072F460001008494E7 /* OneTapTranscribeWidgetExtension */;
+			targetProxy = CE1F00022F460001008494E7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -536,6 +623,60 @@
 			};
 			name = Release;
 		};
+		CE1F000B2F460001008494E7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSExtension = "{NSExtensionPointIdentifier = com.apple.widgetkit-extension;}";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.OneTapTranscribe.WidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		CE1F000C2F460001008494E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSExtension = "{NSExtensionPointIdentifier = com.apple.widgetkit-extension;}";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = test.OneTapTranscribe.WidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -571,6 +712,15 @@
 			buildConfigurations = (
 				CE0EB2952F451019008494E7 /* Debug */,
 				CE0EB2962F451019008494E7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CE1F000D2F460001008494E7 /* Build configuration list for PBXNativeTarget "OneTapTranscribeWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE1F000B2F460001008494E7 /* Debug */,
+				CE1F000C2F460001008494E7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
