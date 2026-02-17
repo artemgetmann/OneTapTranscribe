@@ -1,0 +1,30 @@
+import SwiftUI
+
+@main
+struct TestLiveActivityApp: App {
+    @StateObject private var stateStore: RecordingStateStore
+
+    init() {
+        let liveActivityService = LiveActivityService()
+        let recorderService = RecorderService()
+        let apiClient = APIClient(baseURL: AppConfig.transcriptionBaseURL)
+        let transcriptionQueue = TranscriptionQueue(apiClient: apiClient)
+        let clipboardService = ClipboardService()
+
+        // Centralized composition root for this MVP spike.
+        _stateStore = StateObject(
+            wrappedValue: RecordingStateStore(
+                liveActivityService: liveActivityService,
+                recorderService: recorderService,
+                transcriptionQueue: transcriptionQueue,
+                clipboardService: clipboardService
+            )
+        )
+    }
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView(stateStore: stateStore)
+        }
+    }
+}
