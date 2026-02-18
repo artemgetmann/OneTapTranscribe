@@ -5,6 +5,21 @@
 - Your differentiator is non-invasive recording control while multitasking.
 - Therefore: build iPhone app first, keep scope brutally small, then expand.
 
+## Current Status (2026-02-18)
+- iOS app target builds and runs with Live Activity widget extension embedded.
+- Dynamic Island / lock-screen UI includes a stop control that routes through app deep link (`onetaptranscribe://stop`).
+- Core flow is working: record -> stop -> upload/transcribe via backend -> copy transcript to clipboard.
+- Backend proxy path (`POST /v1/transcribe`) is validated in local runs.
+
+## Immediate Next Moves (High Leverage)
+1. Replace deep-link stop with full background-safe App Intent + app group command channel.
+2. Persist `TranscriptionQueue` to disk (survive app kill/relaunch).
+3. Add deterministic failure UI states for auth errors (401/403) vs retryable network/server errors.
+4. Add a strict device QA script and capture baseline metrics:
+   - stop-to-transcript latency
+   - retry success rate on flaky network
+   - Live Activity state consistency under app switching
+
 ## Direct Answer About Voice Memos + Share Sheet
 - You do **not** invoke the same shortcut twice.
 - But you do perform two user actions:

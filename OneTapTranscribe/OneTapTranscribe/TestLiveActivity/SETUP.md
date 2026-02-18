@@ -33,7 +33,8 @@ Delete the auto-generated files and use the ones I created:
 - Add all files under `Services/` to main app target
 
 ### Widget Extension Target
-- Replace the generated widget file with `RecordingWidget.swift`
+- Replace the generated widget file with `OneTapTranscribeWidgetExtension/RecordingLiveActivityWidget.swift`
+- Ensure bundle entry is `OneTapTranscribeWidgetExtension/OneTapTranscribeWidgetExtensionBundle.swift`
 - Make sure `RecordingAttributes.swift` is in this target too
 
 ## Configure Info.plist

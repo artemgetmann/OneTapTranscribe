@@ -12,11 +12,13 @@ This folder contains a minimal architecture scaffold for validating Live Activit
 - `Services/APIClient.swift`: backend proxy client (`POST /v1/transcribe` multipart).
 - `Services/ClipboardService.swift`: clipboard wrapper.
 - `Services/AppConfig.swift`: environment base URL selection.
-- `RecordingAttributes.swift` + `RecordingWidget.swift`: shared Live Activity model + widget UI.
+- `RecordingAttributes.swift`: shared Live Activity model.
+- `OneTapTranscribeWidgetExtension/RecordingLiveActivityWidget.swift`: Dynamic Island + lock-screen Live Activity UI.
 
 ## What Works Today
 
 - Start/stop flow from app UI using `RecorderService`.
+- Start/stop via Live Activity stop control (deep-link route back into app).
 - Live Activity request/update/end calls from `LiveActivityService`.
 - Elapsed timer updates through state store tick loop (not inside the view).
 - Upload + transcription call to backend proxy.
@@ -26,13 +28,13 @@ This folder contains a minimal architecture scaffold for validating Live Activit
 ## Known Limitations
 
 - Retry queue is in-memory only (not persisted across app relaunches yet).
-- Widget stop button intent still returns success only; it does not call back into app state yet.
 - iOS build requires a real Xcode project + full Xcode install (not just Command Line Tools).
+- Deep-link stop currently opens app before stopping (good for reliability, not fully native background intent behavior yet).
 
 ## Next Integration Steps
 
 1. Persist queue state to disk so uploads survive app restarts.
-2. Wire `StopRecordingIntent` to app state (App Intents + shared container/app group).
+2. Replace deep-link stop with fully in-extension `AppIntent` + app group signaling.
 3. Add unit tests for `RecordingStateStore` and `TranscriptionQueue`.
-4. Add Info.plist key: `TRANSCRIPTION_BASE_URL` for environment switching.
-5. Promote this scaffold into a full iOS app target with committed `.xcodeproj`.
+4. Add transport security + env profile strategy for device testing endpoints.
+5. Promote this scaffold into a fully split app/module structure (`Core`, `Features`, `Infra`).
