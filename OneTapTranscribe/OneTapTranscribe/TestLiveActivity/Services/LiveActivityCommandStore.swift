@@ -13,6 +13,20 @@ enum LiveActivityCommandStore {
         UserDefaults(suiteName: appGroupID)
     }
 
+    @discardableResult
+    static func publishStartRequest() -> Bool {
+        guard let defaults else { return false }
+        defaults.set(Date().timeIntervalSince1970, forKey: startRequestTimestampKey)
+        return defaults.synchronize()
+    }
+
+    @discardableResult
+    static func publishStopRequest() -> Bool {
+        guard let defaults else { return false }
+        defaults.set(Date().timeIntervalSince1970, forKey: stopRequestTimestampKey)
+        return defaults.synchronize()
+    }
+
     static func latestStartRequestTimestamp() -> TimeInterval {
         guard let defaults else { return 0 }
         return defaults.double(forKey: startRequestTimestampKey)

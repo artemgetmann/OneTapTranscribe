@@ -3,9 +3,7 @@ import AppIntents
 struct StartRecordingIntent: AudioRecordingIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
-    // Keep identifier stable so app and extension can advertise the same action identity.
     static var persistentIdentifier: String = "com.onetaptranscribe.intent.startRecording"
-    // Control Center start must force foreground execution so recorder spin-up is deterministic.
     static var supportedModes: IntentModes = .foreground(.immediate)
     static var isDiscoverable: Bool = false
 

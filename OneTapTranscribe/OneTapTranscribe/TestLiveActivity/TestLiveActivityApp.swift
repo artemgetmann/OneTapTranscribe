@@ -46,7 +46,12 @@ struct TestLiveActivityApp: App {
                 .onOpenURL { url in
                     guard url.scheme == "onetaptranscribe" else { return }
 
-                    // Live Activity stop controls deep-link into app.
+                    // Start/stop controls deep-link into app for deterministic routing.
+                    if url.host == "start" || url.path == "/start" {
+                        Task { await stateStore.startRecording() }
+                        return
+                    }
+
                     if url.host == "stop" || url.path == "/stop" {
                         Task { await stateStore.stopRecording() }
                     }
