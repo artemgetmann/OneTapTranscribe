@@ -11,6 +11,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 OPENAI_TRANSCRIPTION_URL = "https://api.openai.com/v1/audio/transcriptions"
@@ -97,6 +98,44 @@ def _parse_upstream_error(response: httpx.Response) -> tuple[str, str]:
     return error_code, default_message
 
 
+def _csv_env(name: str) -> list[str]:
+    raw = os.getenv(name, "")
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _extract_bearer_token(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+
+    parts = authorization.split(" ", 1)
+    if len(parts) != 2:
+        return None
+
+    scheme, token = parts[0].strip().lower(), parts[1].strip()
+    if scheme != "bearer" or not token:
+        return None
+    return token
+
+
+def _assert_client_token(request: Request) -> None:
+    required_token = os.getenv("APP_CLIENT_TOKEN")
+    if not required_token:
+        return
+
+    # Accept standard bearer auth first, with x-app-token fallback for constrained clients.
+    bearer = _extract_bearer_token(request.headers.get("authorization"))
+    fallback = request.headers.get("x-app-token")
+    provided_token = bearer or (fallback.strip() if fallback else None)
+
+    if provided_token != required_token:
+        raise ServiceError(
+            status_code=401,
+            error_code="UNAUTHORIZED",
+            message="Invalid client token.",
+            retryable=False,
+        )
+
+
 async def _forward_to_openai(
     api_key: str,
     file: UploadFile,
@@ -175,6 +214,18 @@ async def _forward_to_openai(
 
 def create_app() -> FastAPI:
     app = FastAPI(title="OneTapTranscribe Proxy")
+    started_at = time.perf_counter()
+
+    allow_origins = _csv_env("CORS_ALLOW_ORIGINS")
+    if allow_origins:
+        # CORS is optional for native iOS calls, but needed for browser/Shortcut/web clients.
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=allow_origins,
+            allow_credentials=False,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["*"],
+        )
 
     @app.middleware("http")
     async def request_context(request: Request, call_next):
@@ -246,6 +297,15 @@ def create_app() -> FastAPI:
             retryable=False,
         )
 
+    @app.get("/health")
+    async def health():
+        return {
+            "status": "ok",
+            "uptimeSec": round(time.perf_counter() - started_at, 2),
+            "hasOpenAIKey": bool(os.getenv("OPENAI_API_KEY")),
+            "clientTokenRequired": bool(os.getenv("APP_CLIENT_TOKEN")),
+        }
+
     @app.post("/v1/transcribe")
     async def transcribe(
         request: Request,
@@ -255,6 +315,7 @@ def create_app() -> FastAPI:
         prompt: str | None = Form(None),
     ):
         request_id = _request_id(request)
+        _assert_client_token(request)
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ServiceError(

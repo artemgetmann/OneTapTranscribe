@@ -8,6 +8,21 @@ def _sample_file():
     return {"file": ("sample.wav", b"audio-bytes", "audio/wav")}
 
 
+def test_health_endpoint_reports_runtime(monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("APP_CLIENT_TOKEN", raising=False)
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ok"
+    assert isinstance(body["uptimeSec"], float)
+    assert body["hasOpenAIKey"] is False
+    assert body["clientTokenRequired"] is False
+
+
 def test_transcribe_success_default_model(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     captured: dict[str, object] = {}
@@ -115,3 +130,42 @@ def test_transcribe_validation_error_for_missing_file(monkeypatch):
     assert body["errorCode"] == "VALIDATION_ERROR"
     assert body["retryable"] is False
     assert isinstance(body["message"], str)
+
+
+def test_transcribe_rejects_when_client_token_is_missing(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("APP_CLIENT_TOKEN", "secret-token")
+    client = TestClient(app)
+
+    response = client.post("/v1/transcribe", files=_sample_file())
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "errorCode": "UNAUTHORIZED",
+        "message": "Invalid client token.",
+        "retryable": False,
+    }
+
+
+def test_transcribe_accepts_bearer_client_token(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("APP_CLIENT_TOKEN", "secret-token")
+
+    async def fake_post(self, url, headers=None, data=None, files=None):
+        return httpx.Response(
+            200,
+            json={"text": "auth passed"},
+            request=httpx.Request("POST", url),
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
+
+    client = TestClient(app)
+    response = client.post(
+        "/v1/transcribe",
+        files=_sample_file(),
+        headers={"Authorization": "Bearer secret-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["text"] == "auth passed"
