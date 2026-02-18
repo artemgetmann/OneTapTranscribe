@@ -14,6 +14,7 @@ enum RecorderServiceError: LocalizedError {
     case alreadyRecording
     case failedToStart
     case recordingSessionUnavailable
+    case recordingFileTooSmall
     case unsupportedPlatform
 
     var errorDescription: String? {
@@ -26,6 +27,8 @@ enum RecorderServiceError: LocalizedError {
             return "Could not start audio recording."
         case .recordingSessionUnavailable:
             return "Audio session is unavailable."
+        case .recordingFileTooSmall:
+            return "Recorded audio was too short or empty."
         case .unsupportedPlatform:
             return "RecorderService is only implemented on iOS."
         }
@@ -54,9 +57,9 @@ final class RecorderService: RecorderServiceProtocol {
         do {
             // `.measurement` reduces system processing so Whisper gets cleaner raw speech.
             try session.setCategory(
-                .playAndRecord,
+                .record,
                 mode: .measurement,
-                options: [.defaultToSpeaker, .allowBluetooth]
+                options: [.allowBluetoothHFP]
             )
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
@@ -94,6 +97,16 @@ final class RecorderService: RecorderServiceProtocol {
 
         let output = activeFileURL
         activeFileURL = nil
+
+        if let output {
+            let values = try output.resourceValues(forKeys: [.fileSizeKey])
+            let fileSize = values.fileSize ?? 0
+            // Extremely small files are usually interrupted/empty recordings and produce gibberish transcripts.
+            if fileSize < 4_096 {
+                throw RecorderServiceError.recordingFileTooSmall
+            }
+        }
+
         return output
     }
 

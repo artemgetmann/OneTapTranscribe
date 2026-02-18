@@ -1,5 +1,8 @@
 import Combine
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 @MainActor
 final class RecordingStateStore: ObservableObject {
@@ -8,6 +11,7 @@ final class RecordingStateStore: ObservableObject {
     @Published private(set) var elapsedSeconds = 0
     @Published private(set) var statusMessage = "No activity running"
     @Published private(set) var lastTranscript: String?
+    @Published private(set) var hasPendingClipboardCopy = false
 
     private let liveActivityService: LiveActivityService
     private let recorderService: RecorderServiceProtocol
@@ -18,6 +22,7 @@ final class RecordingStateStore: ObservableObject {
     private var tickerTask: Task<Void, Never>?
     private var lastObservedStopCommandAt: TimeInterval = 0
     private var isProcessingRemoteStop = false
+    private var pendingClipboardText: String?
 
     init(
         liveActivityService: LiveActivityService,
@@ -96,14 +101,27 @@ final class RecordingStateStore: ObservableObject {
                 // Queue retries transient failures to survive poor network and handoffs.
                 let transcript = try await transcriptionQueue.enqueue(audioFileURL: audioFileURL)
                 lastTranscript = transcript
-                let copied = clipboardService.copy(transcript)
-                statusMessage = copied
-                    ? "Stopped. Transcript copied to clipboard."
-                    : "Stopped. Transcript ready."
-                await notificationService.notifyTranscriptionResult(
-                    success: true,
-                    body: copied ? "Transcript copied to clipboard." : "Transcript is ready."
-                )
+                let copyResult = copyTranscriptRespectingLifecycle(transcript)
+                switch copyResult {
+                case .copied:
+                    statusMessage = "Stopped. Transcript copied to clipboard."
+                    await notificationService.notifyTranscriptionResult(
+                        success: true,
+                        body: "Transcript copied to clipboard."
+                    )
+                case .deferred:
+                    statusMessage = "Stopped. Transcript ready. Open app to copy."
+                    await notificationService.notifyTranscriptionResult(
+                        success: true,
+                        body: "Transcript ready. Open app to copy."
+                    )
+                case .failed:
+                    statusMessage = "Stopped. Transcript ready."
+                    await notificationService.notifyTranscriptionResult(
+                        success: true,
+                        body: "Transcript is ready."
+                    )
+                }
             } catch {
                 statusMessage = "Stopped. Transcription failed: \(error.localizedDescription)"
                 await notificationService.notifyTranscriptionResult(
@@ -133,6 +151,18 @@ final class RecordingStateStore: ObservableObject {
         guard let lastTranscript, !lastTranscript.isEmpty else { return }
         let copied = clipboardService.copy(lastTranscript)
         statusMessage = copied ? "Transcript copied again." : "Copy failed."
+    }
+
+    func handleAppDidBecomeActive() {
+        guard let pendingClipboardText, !pendingClipboardText.isEmpty else { return }
+        let copied = clipboardService.copy(pendingClipboardText)
+        if copied {
+            self.pendingClipboardText = nil
+            hasPendingClipboardCopy = false
+            statusMessage = "Transcript copied to clipboard."
+        } else {
+            statusMessage = "Transcript ready, but copy failed."
+        }
     }
 
     private func startTicker() {
@@ -178,6 +208,31 @@ final class RecordingStateStore: ObservableObject {
             await self.stopRecording()
             self.isProcessingRemoteStop = false
         }
+    }
+
+    private enum ClipboardCopyResult {
+        case copied
+        case deferred
+        case failed
+    }
+
+    private func copyTranscriptRespectingLifecycle(_ transcript: String) -> ClipboardCopyResult {
+        guard !transcript.isEmpty else { return .failed }
+        guard isAppActiveForClipboardWrites() else {
+            pendingClipboardText = transcript
+            hasPendingClipboardCopy = true
+            return .deferred
+        }
+        let copied = clipboardService.copy(transcript)
+        return copied ? .copied : .failed
+    }
+
+    private func isAppActiveForClipboardWrites() -> Bool {
+#if canImport(UIKit)
+        return UIApplication.shared.applicationState == .active
+#else
+        return true
+#endif
     }
 }
 

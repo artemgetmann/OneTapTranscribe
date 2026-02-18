@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct TestLiveActivityApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var stateStore: RecordingStateStore
 
     init() {
@@ -31,6 +32,10 @@ struct TestLiveActivityApp: App {
             ContentView(stateStore: stateStore)
                 .task {
                     await stateStore.prepareNotifications()
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    guard newPhase == .active else { return }
+                    stateStore.handleAppDidBecomeActive()
                 }
                 .onOpenURL { url in
                     guard url.scheme == "onetaptranscribe" else { return }

@@ -148,6 +148,12 @@ struct ContentView: View {
                                 stateStore.copyLastTranscriptToClipboard()
                             }
                             .font(.footnote.weight(.semibold))
+
+                            if stateStore.hasPendingClipboardCopy {
+                                Text("Clipboard sync pending. Opened app will auto-copy.")
+                                    .font(.footnote.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
