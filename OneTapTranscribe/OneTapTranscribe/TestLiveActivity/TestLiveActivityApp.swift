@@ -25,6 +25,14 @@ struct TestLiveActivityApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(stateStore: stateStore)
+                .onOpenURL { url in
+                    guard url.scheme == "onetaptranscribe" else { return }
+
+                    // Live Activity stop controls deep-link into app.
+                    if url.host == "stop" || url.path == "/stop" {
+                        Task { await stateStore.stopRecording() }
+                    }
+                }
         }
     }
 }
