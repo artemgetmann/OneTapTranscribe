@@ -1,8 +1,5 @@
 import Combine
 import Foundation
-#if canImport(UIKit)
-import UIKit
-#endif
 
 @MainActor
 final class RecordingStateStore: ObservableObject {
@@ -218,21 +215,16 @@ final class RecordingStateStore: ObservableObject {
 
     private func copyTranscriptRespectingLifecycle(_ transcript: String) -> ClipboardCopyResult {
         guard !transcript.isEmpty else { return .failed }
-        guard isAppActiveForClipboardWrites() else {
-            pendingClipboardText = transcript
-            hasPendingClipboardCopy = true
-            return .deferred
-        }
         let copied = clipboardService.copy(transcript)
-        return copied ? .copied : .failed
-    }
-
-    private func isAppActiveForClipboardWrites() -> Bool {
-#if canImport(UIKit)
-        return UIApplication.shared.applicationState == .active
-#else
-        return true
-#endif
+        if copied {
+            pendingClipboardText = nil
+            hasPendingClipboardCopy = false
+            return .copied
+        }
+        // Keep fallback path for OS-rejected background writes.
+        pendingClipboardText = transcript
+        hasPendingClipboardCopy = true
+        return .deferred
     }
 }
 

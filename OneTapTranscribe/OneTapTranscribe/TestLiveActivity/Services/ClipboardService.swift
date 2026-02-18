@@ -14,12 +14,14 @@ struct ClipboardService {
 
 #if canImport(UIKit)
         UIPasteboard.general.string = text
+        // Verify write because background pasteboard writes may be ignored by the OS.
+        return UIPasteboard.general.string == text
 #elseif canImport(AppKit)
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        let wrote = NSPasteboard.general.setString(text, forType: .string)
+        return wrote
 #else
         return false
 #endif
-        return true
     }
 }
