@@ -13,6 +13,8 @@ final class RecordingStateStore: ObservableObject {
     private let recorderService: RecorderServiceProtocol
     private let transcriptionQueue: TranscriptionQueue
     private let clipboardService: ClipboardService
+    private let notificationService: NotificationServiceProtocol
+    private let backgroundTaskService: BackgroundTaskServiceProtocol
     private var tickerTask: Task<Void, Never>?
     private var lastObservedStopCommandAt: TimeInterval = 0
     private var isProcessingRemoteStop = false
@@ -21,12 +23,16 @@ final class RecordingStateStore: ObservableObject {
         liveActivityService: LiveActivityService,
         recorderService: RecorderServiceProtocol,
         transcriptionQueue: TranscriptionQueue,
-        clipboardService: ClipboardService
+        clipboardService: ClipboardService,
+        notificationService: NotificationServiceProtocol,
+        backgroundTaskService: BackgroundTaskServiceProtocol
     ) {
         self.liveActivityService = liveActivityService
         self.recorderService = recorderService
         self.transcriptionQueue = transcriptionQueue
         self.clipboardService = clipboardService
+        self.notificationService = notificationService
+        self.backgroundTaskService = backgroundTaskService
         // Avoid replaying stale stop commands that may exist from previous sessions.
         self.lastObservedStopCommandAt = LiveActivityCommandStore.latestStopRequestTimestamp()
     }
@@ -60,6 +66,8 @@ final class RecordingStateStore: ObservableObject {
 
     func stopRecording() async {
         guard isRecording else { return }
+        let backgroundToken = backgroundTaskService.beginTask(named: "OneTapTranscribe.StopAndUpload")
+        defer { backgroundTaskService.endTask(backgroundToken) }
 
         // Freeze timer first so UI and widget stop incrementing immediately.
         stopTicker()
@@ -92,17 +100,33 @@ final class RecordingStateStore: ObservableObject {
                 statusMessage = copied
                     ? "Stopped. Transcript copied to clipboard."
                     : "Stopped. Transcript ready."
+                await notificationService.notifyTranscriptionResult(
+                    success: true,
+                    body: copied ? "Transcript copied to clipboard." : "Transcript is ready."
+                )
             } catch {
                 statusMessage = "Stopped. Transcription failed: \(error.localizedDescription)"
+                await notificationService.notifyTranscriptionResult(
+                    success: false,
+                    body: error.localizedDescription
+                )
             }
         } catch {
             // Ensure lock screen UI is not orphaned if recorder teardown throws.
             await liveActivityService.stopLiveActivity()
             isUploading = false
             statusMessage = "Stop failed: \(error.localizedDescription)"
+            await notificationService.notifyTranscriptionResult(
+                success: false,
+                body: error.localizedDescription
+            )
         }
 
         elapsedSeconds = 0
+    }
+
+    func prepareNotifications() async {
+        await notificationService.requestAuthorizationIfNeeded()
     }
 
     func copyLastTranscriptToClipboard() {
@@ -147,10 +171,13 @@ final class RecordingStateStore: ObservableObject {
 
         lastObservedStopCommandAt = observedTimestamp
         isProcessingRemoteStop = true
-        defer { isProcessingRemoteStop = false }
 
-        // Reuse the exact same stop pipeline so behavior remains consistent.
-        await stopRecording()
+        // Run stop flow off the ticker task. Otherwise stopTicker() would cancel this same task.
+        Task { [weak self] in
+            guard let self else { return }
+            await self.stopRecording()
+            self.isProcessingRemoteStop = false
+        }
     }
 }
 
@@ -162,7 +189,9 @@ extension RecordingStateStore {
             transcriptionQueue: TranscriptionQueue(
                 apiClient: APIClient(baseURL: AppConfig.transcriptionBaseURL)
             ),
-            clipboardService: ClipboardService()
+            clipboardService: ClipboardService(),
+            notificationService: NotificationService(),
+            backgroundTaskService: BackgroundTaskService()
         )
     }
 }

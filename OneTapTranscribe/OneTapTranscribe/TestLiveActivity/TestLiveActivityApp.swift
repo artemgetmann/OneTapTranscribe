@@ -10,6 +10,8 @@ struct TestLiveActivityApp: App {
         let apiClient = APIClient()
         let transcriptionQueue = TranscriptionQueue(apiClient: apiClient)
         let clipboardService = ClipboardService()
+        let notificationService = NotificationService()
+        let backgroundTaskService = BackgroundTaskService()
 
         // Centralized composition root for this MVP spike.
         _stateStore = StateObject(
@@ -17,7 +19,9 @@ struct TestLiveActivityApp: App {
                 liveActivityService: liveActivityService,
                 recorderService: recorderService,
                 transcriptionQueue: transcriptionQueue,
-                clipboardService: clipboardService
+                clipboardService: clipboardService,
+                notificationService: notificationService,
+                backgroundTaskService: backgroundTaskService
             )
         )
     }
@@ -25,6 +29,9 @@ struct TestLiveActivityApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(stateStore: stateStore)
+                .task {
+                    await stateStore.prepareNotifications()
+                }
                 .onOpenURL { url in
                     guard url.scheme == "onetaptranscribe" else { return }
 
