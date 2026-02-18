@@ -103,23 +103,18 @@ struct ContentView: View {
                     .padding(18)
                     .glassCard()
 
-                    HStack(spacing: 12) {
+                    if stateStore.isRecording {
+                        ProminentStopButton {
+                            Task { await stateStore.stopRecording() }
+                        }
+                    } else {
                         GlassActionButton(
                             title: "Start",
                             systemImage: "play.fill",
                             color: .green,
-                            isEnabled: !stateStore.isRecording && !stateStore.isUploading
+                            isEnabled: !stateStore.isUploading
                         ) {
                             Task { await stateStore.startRecording() }
-                        }
-
-                        GlassActionButton(
-                            title: "Stop",
-                            systemImage: "stop.fill",
-                            color: .red,
-                            isEnabled: stateStore.isRecording
-                        ) {
-                            Task { await stateStore.stopRecording() }
                         }
                     }
 
@@ -284,6 +279,35 @@ private struct GlassActionButton: View {
         }
         .disabled(!isEnabled)
         .shadow(color: color.opacity(isEnabled ? 0.28 : 0), radius: 12, y: 6)
+    }
+}
+
+private struct ProminentStopButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: "stop.circle.fill")
+                    .font(.title2.weight(.bold))
+                Text("Stop Recording")
+                    .font(.title3.weight(.bold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 20)
+            .foregroundStyle(.white)
+            .background(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.red, Color(red: 0.78, green: 0.11, blue: 0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+            )
+        }
+        .shadow(color: Color.red.opacity(0.34), radius: 16, y: 7)
     }
 }
 
