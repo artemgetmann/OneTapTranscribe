@@ -32,7 +32,7 @@ struct NotificationService: NotificationServiceProtocol {
     private func registerCategories() {
         let copyAction = UNNotificationAction(
             identifier: Self.copyActionIdentifier,
-            title: "Copy transcript",
+            title: "Open app & copy",
             // Foreground action gives us a reliable lifecycle transition where pasteboard writes succeed.
             options: [.foreground]
         )
@@ -157,8 +157,8 @@ private final class NotificationCenterDelegate: NSObject, UNUserNotificationCent
                 feedback.title = "Copied"
                 feedback.body = "Transcript copied to clipboard."
             case .queuedForForeground:
-                feedback.title = "Copy queued"
-                feedback.body = "Opening app to finish clipboard copy."
+                feedback.title = "Opening app"
+                feedback.body = "App is opening to finish clipboard copy."
             }
             feedback.sound = .default
             let request = UNNotificationRequest(

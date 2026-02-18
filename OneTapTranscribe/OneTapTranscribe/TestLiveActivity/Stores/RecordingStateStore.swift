@@ -121,10 +121,10 @@ final class RecordingStateStore: ObservableObject {
                         transcriptForCopy: nil
                     )
                 case .deferred:
-                    statusMessage = "Stopped. Transcript ready. Use notification Copy action."
+                    statusMessage = "Stopped. Transcript ready. Tap notification to open app and copy."
                     await notificationService.notifyTranscriptionResult(
                         success: true,
-                        body: "Tap Copy transcript from this notification.",
+                        body: "Transcript ready. Tap Open app & copy.",
                         transcriptForCopy: transcript
                     )
                 case .failed:
