@@ -1,4 +1,7 @@
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 enum APIClientError: LocalizedError {
     case invalidAudioFile
@@ -61,11 +64,7 @@ struct APIClient: APIClientProtocol, Sendable {
         let resolvedBaseURL = baseURLOverride ?? AppConfig.transcriptionBaseURL
         let endpoint = resolvedBaseURL.appendingPathComponent("v1/transcribe")
         let boundary = "Boundary-\(UUID().uuidString)"
-        var request = URLRequest(url: endpoint)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 120
-        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-        request.setValue(UUID().uuidString, forHTTPHeaderField: "x-request-id")
+        var request = makeRequest(endpoint: endpoint, boundary: boundary)
         if let token = resolvedClientToken() {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
@@ -77,10 +76,25 @@ struct APIClient: APIClientProtocol, Sendable {
             prompt: prompt,
             boundary: boundary
         )
-        request.httpBody = data
+        let useBackgroundTransport = shouldUseBackgroundTransport()
 
         do {
-            let (responseData, response) = try await session.data(for: request)
+            let (responseData, response): (Data, URLResponse)
+            if useBackgroundTransport {
+                let bodyFileURL = try writeMultipartBodyToTemporaryFile(data)
+#if os(iOS)
+                (responseData, response) = try await BackgroundUploadService.shared.upload(
+                    request: request,
+                    bodyFileURL: bodyFileURL
+                )
+#else
+                request.httpBody = data
+                (responseData, response) = try await session.data(for: request)
+#endif
+            } else {
+                request.httpBody = data
+                (responseData, response) = try await session.data(for: request)
+            }
             guard let httpResponse = response as? HTTPURLResponse else {
                 throw APIClientError.invalidResponse
             }
@@ -105,6 +119,30 @@ struct APIClient: APIClientProtocol, Sendable {
             return override
         }
         return AppConfig.clientToken
+    }
+
+    private func makeRequest(endpoint: URL, boundary: String) -> URLRequest {
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 120
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "x-request-id")
+        return request
+    }
+
+    private func writeMultipartBodyToTemporaryFile(_ body: Data) throws -> URL {
+        let temporaryFileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("transcribe-\(UUID().uuidString).multipart")
+        try body.write(to: temporaryFileURL, options: .atomic)
+        return temporaryFileURL
+    }
+
+    private func shouldUseBackgroundTransport() -> Bool {
+#if os(iOS)
+        UIApplication.shared.applicationState != .active
+#else
+        false
+#endif
     }
 
     /// Construct multipart payload manually so we do not depend on third-party networking libs.

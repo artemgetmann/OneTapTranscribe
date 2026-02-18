@@ -4,6 +4,9 @@ import SwiftUI
 struct TestLiveActivityApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var stateStore: RecordingStateStore
+#if os(iOS)
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+#endif
 
     init() {
 #if os(iOS)
