@@ -10,6 +10,7 @@
 - Dynamic Island / lock-screen UI includes a stop control that routes through app deep link (`onetaptranscribe://stop`).
 - Core flow is working: record -> stop -> upload/transcribe via backend -> copy transcript to clipboard.
 - Backend proxy path (`POST /v1/transcribe`) is validated in local runs.
+- Cloud readiness is prepared: runtime backend URL/token settings in app and hosting guide in `docs/HOSTING.md`.
 
 ## Immediate Next Moves (High Leverage)
 1. Replace deep-link stop with full background-safe App Intent + app group command channel.
