@@ -3,6 +3,15 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
+private let brandAccent = Color(red: 0.604, green: 0.424, blue: 0.973)
+private let brandBlue = Color(red: 0.400, green: 0.494, blue: 0.976)
+private let brandViolet = Color(red: 0.769, green: 0.357, blue: 0.988)
+private let brandGradient = LinearGradient(
+    colors: [Color(red: 0.400, green: 0.494, blue: 0.976), Color(red: 0.769, green: 0.357, blue: 0.988)],
+    startPoint: .leading,
+    endPoint: .trailing
+)
+
 struct RecordingLiveActivityWidget: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: RecordingAttributes.self) { context in
@@ -12,11 +21,10 @@ struct RecordingLiveActivityWidget: Widget {
                 DynamicIslandExpandedRegion(.leading) {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(.red)
+                            .fill(brandGradient)
                             .frame(width: 8, height: 8)
-                        Text("REC")
-                            .font(.caption)
-                            .fontWeight(.semibold)
+                        Image(systemName: "waveform")
+                            .font(.caption2.weight(.semibold))
                     }
                 }
 
@@ -43,18 +51,17 @@ struct RecordingLiveActivityWidget: Widget {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .foregroundStyle(.white)
-                        .background(Capsule().fill(.red))
+                        .background(Capsule().fill(brandGradient))
                     }
                     .buttonStyle(.plain)
                 }
             } compactLeading: {
                 HStack(spacing: 4) {
                     Circle()
-                        .fill(.red)
+                        .fill(brandGradient)
                         .frame(width: 6, height: 6)
-                    Text("REC")
-                        .font(.caption2)
-                        .fontWeight(.semibold)
+                    Image(systemName: "waveform")
+                        .font(.caption2.weight(.semibold))
                 }
             } compactTrailing: {
                 Text(formatTime(context.state.elapsedSeconds))
@@ -62,7 +69,7 @@ struct RecordingLiveActivityWidget: Widget {
                     .fontWeight(.medium)
             } minimal: {
                 Circle()
-                    .fill(.red)
+                    .fill(brandGradient)
                     .frame(width: 10, height: 10)
             }
         }
@@ -83,7 +90,7 @@ private struct LockScreenRecordingView: View {
             HStack(spacing: 12) {
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(.red)
+                        .fill(brandGradient)
                         .frame(width: 10, height: 10)
                     Text(context.state.isUploading ? "Uploading" : "Recording")
                         .fontWeight(.semibold)
@@ -108,7 +115,7 @@ private struct LockScreenRecordingView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 7)
-                        .background(Capsule().fill(.red))
+                        .background(Capsule().fill(brandGradient))
                 }
             }
         }
@@ -137,8 +144,12 @@ private struct LiveWaveformView: View {
                     let amplitude = isActive ? 8.0 : 1.0
                     let height = base + (sin(phase) + 1.0) * 0.5 * amplitude
 
+                    let barFill: LinearGradient = isActive
+                        ? brandGradient
+                        : LinearGradient(colors: [Color.secondary.opacity(0.4)], startPoint: .leading, endPoint: .trailing)
+
                     Capsule(style: .continuous)
-                        .fill(isActive ? Color.red.opacity(0.9) : Color.secondary.opacity(0.4))
+                        .fill(barFill)
                         .frame(width: 3, height: height)
                 }
             }

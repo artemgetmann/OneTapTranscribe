@@ -9,7 +9,7 @@ struct OneTapRecordControlWidget: ControlWidget {
             ControlWidgetButton(action: StartRecordingIntent()) {
                 Label("Start Recording", systemImage: "waveform.circle.fill")
             }
-            .tint(Color(red: 0.545, green: 0.361, blue: 0.965))
+            .tint(Color(red: 0.604, green: 0.424, blue: 0.973))
         }
         .displayName("OneTap Record")
         .description("Start recording from Control Center and immediately show recording state.")
