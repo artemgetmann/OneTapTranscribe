@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import OSLog
 #if os(iOS)
 import UIKit
 #endif
@@ -26,6 +27,7 @@ final class RecordingStateStore: ObservableObject {
     private var isProcessingRemoteStart = false
     private var isProcessingRemoteStop = false
     private var pendingClipboardText: String?
+    private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "RecordingStateStore")
 
     init(
         liveActivityService: LiveActivityService,
@@ -58,6 +60,7 @@ final class RecordingStateStore: ObservableObject {
 
     func startRecording() async {
         guard !isRecording else { return }
+        logger.info("startRecording requested isRecording=\(self.isRecording, privacy: .public) isUploading=\(self.isUploading, privacy: .public)")
 
         do {
             try await recorderService.startRecording()
@@ -71,16 +74,19 @@ final class RecordingStateStore: ObservableObject {
             statusMessage = liveActivityService.canStartActivities()
                 ? "Recording started. Live Activity is running."
                 : "Recording started. Live Activities are disabled."
+            logger.info("startRecording succeeded liveActivityAvailable=\(self.liveActivityService.canStartActivities(), privacy: .public)")
             startTicker()
         } catch {
             // Keep state sane if one dependency starts successfully and the next one fails.
             _ = try? await recorderService.stopRecording()
             statusMessage = "Failed to start: \(error.localizedDescription)"
+            logger.error("startRecording failed error=\(error.localizedDescription, privacy: .public)")
         }
     }
 
     func stopRecording() async {
         guard isRecording else { return }
+        logger.info("stopRecording requested elapsed=\(self.elapsedSeconds, privacy: .public)")
         let backgroundToken = backgroundTaskService.beginTask(named: "OneTapTranscribe.StopAndUpload")
         defer { backgroundTaskService.endTask(backgroundToken) }
 
@@ -115,6 +121,7 @@ final class RecordingStateStore: ObservableObject {
                 switch copyResult {
                 case .copied:
                     statusMessage = "Stopped. Transcript copied to clipboard."
+                    logger.info("stopRecording completed copyResult=copied transcriptLength=\(transcript.count, privacy: .public)")
                     await notificationService.notifyTranscriptionResult(
                         success: true,
                         body: "Transcript copied to clipboard.",
@@ -122,6 +129,7 @@ final class RecordingStateStore: ObservableObject {
                     )
                 case .deferred:
                     statusMessage = "Stopped. Transcript ready. Tap notification to open app and copy."
+                    logger.info("stopRecording completed copyResult=deferred transcriptLength=\(transcript.count, privacy: .public)")
                     await notificationService.notifyTranscriptionResult(
                         success: true,
                         body: "Transcript ready. Tap Open app & copy.",
@@ -129,6 +137,7 @@ final class RecordingStateStore: ObservableObject {
                     )
                 case .failed:
                     statusMessage = "Stopped. Transcript ready."
+                    logger.info("stopRecording completed copyResult=failed transcriptLength=\(transcript.count, privacy: .public)")
                     await notificationService.notifyTranscriptionResult(
                         success: true,
                         body: "Transcript is ready.",
@@ -137,6 +146,7 @@ final class RecordingStateStore: ObservableObject {
                 }
             } catch {
                 statusMessage = "Stopped. Transcription failed: \(error.localizedDescription)"
+                logger.error("stopRecording transcription failed error=\(error.localizedDescription, privacy: .public)")
                 await notificationService.notifyTranscriptionResult(
                     success: false,
                     body: error.localizedDescription,
@@ -148,6 +158,7 @@ final class RecordingStateStore: ObservableObject {
             await liveActivityService.stopLiveActivity()
             isUploading = false
             statusMessage = "Stop failed: \(error.localizedDescription)"
+            logger.error("stopRecording failed error=\(error.localizedDescription, privacy: .public)")
             await notificationService.notifyTranscriptionResult(
                 success: false,
                 body: error.localizedDescription,
@@ -242,6 +253,7 @@ final class RecordingStateStore: ObservableObject {
 
         let observedTimestamp = LiveActivityCommandStore.latestStartRequestTimestamp()
         guard observedTimestamp > lastObservedStartCommandAt else { return }
+        logger.info("consumeRemoteStartCommand observedTimestamp=\(observedTimestamp, privacy: .public) lastObserved=\(self.lastObservedStartCommandAt, privacy: .public)")
 
         lastObservedStartCommandAt = observedTimestamp
         LiveActivityCommandStore.markStartRequestConsumed(observedTimestamp)
@@ -259,6 +271,7 @@ final class RecordingStateStore: ObservableObject {
 
         let observedTimestamp = LiveActivityCommandStore.latestStopRequestTimestamp()
         guard observedTimestamp > lastObservedStopCommandAt else { return }
+        logger.info("consumeRemoteStopCommand observedTimestamp=\(observedTimestamp, privacy: .public) lastObserved=\(self.lastObservedStopCommandAt, privacy: .public)")
 
         lastObservedStopCommandAt = observedTimestamp
         LiveActivityCommandStore.markStopRequestConsumed(observedTimestamp)
