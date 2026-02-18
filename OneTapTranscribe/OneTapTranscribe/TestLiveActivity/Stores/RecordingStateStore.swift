@@ -14,6 +14,8 @@ final class RecordingStateStore: ObservableObject {
     private let transcriptionQueue: TranscriptionQueue
     private let clipboardService: ClipboardService
     private var tickerTask: Task<Void, Never>?
+    private var lastObservedStopCommandAt: TimeInterval = 0
+    private var isProcessingRemoteStop = false
 
     init(
         liveActivityService: LiveActivityService,
@@ -25,6 +27,8 @@ final class RecordingStateStore: ObservableObject {
         self.recorderService = recorderService
         self.transcriptionQueue = transcriptionQueue
         self.clipboardService = clipboardService
+        // Avoid replaying stale stop commands that may exist from previous sessions.
+        self.lastObservedStopCommandAt = LiveActivityCommandStore.latestStopRequestTimestamp()
     }
 
     deinit {
@@ -131,6 +135,22 @@ final class RecordingStateStore: ObservableObject {
             elapsedSeconds: elapsedSeconds,
             isUploading: false
         )
+
+        await consumeRemoteStopCommandIfNeeded()
+    }
+
+    private func consumeRemoteStopCommandIfNeeded() async {
+        guard isRecording, !isProcessingRemoteStop else { return }
+
+        let observedTimestamp = LiveActivityCommandStore.latestStopRequestTimestamp()
+        guard observedTimestamp > lastObservedStopCommandAt else { return }
+
+        lastObservedStopCommandAt = observedTimestamp
+        isProcessingRemoteStop = true
+        defer { isProcessingRemoteStop = false }
+
+        // Reuse the exact same stop pipeline so behavior remains consistent.
+        await stopRecording()
     }
 }
 

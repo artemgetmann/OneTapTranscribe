@@ -1,4 +1,5 @@
 import ActivityKit
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -38,7 +39,7 @@ struct RecordingLiveActivityWidget: Widget {
 
                         Spacer(minLength: 0)
 
-                        Link(destination: URL(string: "onetaptranscribe://stop")!) {
+                        Button(intent: StopRecordingIntent()) {
                             Label("Stop", systemImage: "stop.circle.fill")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(.white)
@@ -104,7 +105,7 @@ private struct LockScreenRecordingView: View {
 
                 Spacer(minLength: 0)
 
-                Link(destination: URL(string: "onetaptranscribe://stop")!) {
+                Button(intent: StopRecordingIntent()) {
                     Label("Stop", systemImage: "stop.circle.fill")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
