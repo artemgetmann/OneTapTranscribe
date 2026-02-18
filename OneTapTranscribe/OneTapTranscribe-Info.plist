@@ -33,10 +33,16 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>OneTapTranscribe needs microphone access to record audio for transcription.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Required for local-device testing against http://LAN_IP:8000 backend. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>TRANSCRIPTION_BASE_URL</key>
-	<string>http://127.0.0.1:8000</string>
+	<string>https://onetaptranscribe-api.onrender.com</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
