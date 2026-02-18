@@ -41,10 +41,10 @@ final class RecordingStateStore: ObservableObject {
         self.clipboardService = clipboardService
         self.notificationService = notificationService
         self.backgroundTaskService = backgroundTaskService
-        // Avoid replaying stale start commands that may exist from previous sessions.
-        self.lastObservedStartCommandAt = LiveActivityCommandStore.latestStartRequestTimestamp()
-        // Avoid replaying stale stop commands that may exist from previous sessions.
-        self.lastObservedStopCommandAt = LiveActivityCommandStore.latestStopRequestTimestamp()
+        // Resume from explicit consumed markers so command taps made while app was cold-started
+        // are not discarded as "already observed" during initialization.
+        self.lastObservedStartCommandAt = LiveActivityCommandStore.latestConsumedStartRequestTimestamp()
+        self.lastObservedStopCommandAt = LiveActivityCommandStore.latestConsumedStopRequestTimestamp()
         // Restore pending clipboard state in case previous copy attempt happened while app was backgrounded.
         self.pendingClipboardText = DeferredClipboardStore.load()
         self.hasPendingClipboardCopy = self.pendingClipboardText?.isEmpty == false
@@ -170,19 +170,25 @@ final class RecordingStateStore: ObservableObject {
 
     func handleAppDidBecomeActive() {
         let pending = pendingClipboardText ?? DeferredClipboardStore.load()
-        guard let pending, !pending.isEmpty else { return }
-        let copied = clipboardService.copy(pending)
-        if copied {
-            self.pendingClipboardText = nil
-            DeferredClipboardStore.clear()
-            hasPendingClipboardCopy = false
-            statusMessage = "Transcript copied to clipboard."
-        } else {
-            // Keep durable fallback so user can retry after returning to foreground again.
-            DeferredClipboardStore.save(pending)
-            self.pendingClipboardText = pending
-            hasPendingClipboardCopy = true
-            statusMessage = "Transcript ready, but copy failed."
+        if let pending, !pending.isEmpty {
+            let copied = clipboardService.copy(pending)
+            if copied {
+                self.pendingClipboardText = nil
+                DeferredClipboardStore.clear()
+                hasPendingClipboardCopy = false
+                statusMessage = "Transcript copied to clipboard."
+            } else {
+                // Keep durable fallback so user can retry after returning to foreground again.
+                DeferredClipboardStore.save(pending)
+                self.pendingClipboardText = pending
+                hasPendingClipboardCopy = true
+                statusMessage = "Transcript ready, but copy failed."
+            }
+        }
+
+        // Consume any pending control-widget command immediately on foreground transition.
+        Task { [weak self] in
+            await self?.consumeRemoteCommandsIfNeeded()
         }
     }
 
@@ -238,6 +244,7 @@ final class RecordingStateStore: ObservableObject {
         guard observedTimestamp > lastObservedStartCommandAt else { return }
 
         lastObservedStartCommandAt = observedTimestamp
+        LiveActivityCommandStore.markStartRequestConsumed(observedTimestamp)
         isProcessingRemoteStart = true
 
         Task { [weak self] in
@@ -254,6 +261,7 @@ final class RecordingStateStore: ObservableObject {
         guard observedTimestamp > lastObservedStopCommandAt else { return }
 
         lastObservedStopCommandAt = observedTimestamp
+        LiveActivityCommandStore.markStopRequestConsumed(observedTimestamp)
         isProcessingRemoteStop = true
 
         // Run stop flow off the ticker task. Otherwise stopTicker() would cancel this same task.

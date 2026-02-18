@@ -9,9 +9,9 @@ struct OneTapRecordControlWidget: ControlWidget {
             ControlWidgetButton(action: StartRecordingIntent()) {
                 Label("Start Recording", systemImage: "waveform.circle.fill")
             }
-            .tint(.red)
+            .tint(Color(red: 0.545, green: 0.361, blue: 0.965))
         }
         .displayName("OneTap Record")
-        .description("Start recording from Control Center without opening the app.")
+        .description("Start recording from Control Center and immediately show recording state.")
     }
 }
