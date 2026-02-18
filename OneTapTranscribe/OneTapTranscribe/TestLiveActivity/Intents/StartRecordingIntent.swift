@@ -5,7 +5,8 @@ struct StartRecordingIntent: AudioRecordingIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
     static var persistentIdentifier: String = "com.onetaptranscribe.intent.startRecording"
-    static var openAppWhenRun: Bool = true
+    // Keep app-side declaration aligned with extension-side mode semantics.
+    static var supportedModes: IntentModes = .foreground(.dynamic)
     static var isDiscoverable: Bool = false
 
     private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "ControlIntent")
