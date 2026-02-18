@@ -19,6 +19,11 @@ struct NotificationService: NotificationServiceProtocol {
 
     private let center = UNUserNotificationCenter.current()
 
+    private static var transcriptDefaults: UserDefaults {
+        // Use app group when available so app/widget/intent surfaces share a single source of truth.
+        UserDefaults(suiteName: LiveActivityCommandStore.appGroupID) ?? .standard
+    }
+
     static func installNotificationDelegate() {
         // UNUserNotificationCenter keeps a weak delegate; retain it statically.
         UNUserNotificationCenter.current().delegate = delegate
@@ -40,7 +45,7 @@ struct NotificationService: NotificationServiceProtocol {
     }
 
     private static func cacheTranscriptForCopyAction(_ transcript: String?) {
-        guard let defaults = UserDefaults(suiteName: LiveActivityCommandStore.appGroupID) else { return }
+        let defaults = transcriptDefaults
         guard let transcript else {
             defaults.removeObject(forKey: cachedTranscriptDefaultsKey)
             return
@@ -49,8 +54,12 @@ struct NotificationService: NotificationServiceProtocol {
     }
 
     fileprivate static func loadCachedTranscript() -> String? {
-        guard let defaults = UserDefaults(suiteName: LiveActivityCommandStore.appGroupID) else { return nil }
+        let defaults = transcriptDefaults
         return defaults.string(forKey: cachedTranscriptDefaultsKey)
+    }
+
+    fileprivate static func clearCachedTranscript() {
+        transcriptDefaults.removeObject(forKey: cachedTranscriptDefaultsKey)
     }
 #endif
 
@@ -110,6 +119,9 @@ private final class NotificationCenterDelegate: NSObject, UNUserNotificationCent
 
         Task {
             let didCopy = await copied.value
+            if didCopy {
+                NotificationService.clearCachedTranscript()
+            }
             let feedback = UNMutableNotificationContent()
             feedback.title = didCopy ? "Copied" : "Copy failed"
             feedback.body = didCopy
