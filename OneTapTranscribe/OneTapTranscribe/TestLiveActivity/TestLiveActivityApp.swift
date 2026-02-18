@@ -6,6 +6,9 @@ struct TestLiveActivityApp: App {
     @StateObject private var stateStore: RecordingStateStore
 
     init() {
+#if os(iOS)
+        NotificationService.installNotificationDelegate()
+#endif
         let liveActivityService = LiveActivityService()
         let recorderService = RecorderService()
         let apiClient = APIClient()

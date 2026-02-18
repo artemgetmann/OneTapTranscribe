@@ -104,26 +104,30 @@ final class RecordingStateStore: ObservableObject {
                     statusMessage = "Stopped. Transcript copied to clipboard."
                     await notificationService.notifyTranscriptionResult(
                         success: true,
-                        body: "Transcript copied to clipboard."
+                        body: "Transcript copied to clipboard.",
+                        transcriptForCopy: nil
                     )
                 case .deferred:
-                    statusMessage = "Stopped. Transcript ready. Open app to copy."
+                    statusMessage = "Stopped. Transcript ready. Use notification Copy action."
                     await notificationService.notifyTranscriptionResult(
                         success: true,
-                        body: "Transcript ready. Open app to copy."
+                        body: "Tap Copy transcript from this notification.",
+                        transcriptForCopy: transcript
                     )
                 case .failed:
                     statusMessage = "Stopped. Transcript ready."
                     await notificationService.notifyTranscriptionResult(
                         success: true,
-                        body: "Transcript is ready."
+                        body: "Transcript is ready.",
+                        transcriptForCopy: nil
                     )
                 }
             } catch {
                 statusMessage = "Stopped. Transcription failed: \(error.localizedDescription)"
                 await notificationService.notifyTranscriptionResult(
                     success: false,
-                    body: error.localizedDescription
+                    body: error.localizedDescription,
+                    transcriptForCopy: nil
                 )
             }
         } catch {
@@ -133,7 +137,8 @@ final class RecordingStateStore: ObservableObject {
             statusMessage = "Stop failed: \(error.localizedDescription)"
             await notificationService.notifyTranscriptionResult(
                 success: false,
-                body: error.localizedDescription
+                body: error.localizedDescription,
+                transcriptForCopy: nil
             )
         }
 
