@@ -20,7 +20,10 @@ final class RecordingStateStore: ObservableObject {
     private let notificationService: NotificationServiceProtocol
     private let backgroundTaskService: BackgroundTaskServiceProtocol
     private var tickerTask: Task<Void, Never>?
+    private var commandWatcherTask: Task<Void, Never>?
+    private var lastObservedStartCommandAt: TimeInterval = 0
     private var lastObservedStopCommandAt: TimeInterval = 0
+    private var isProcessingRemoteStart = false
     private var isProcessingRemoteStop = false
     private var pendingClipboardText: String?
 
@@ -38,12 +41,16 @@ final class RecordingStateStore: ObservableObject {
         self.clipboardService = clipboardService
         self.notificationService = notificationService
         self.backgroundTaskService = backgroundTaskService
+        // Avoid replaying stale start commands that may exist from previous sessions.
+        self.lastObservedStartCommandAt = LiveActivityCommandStore.latestStartRequestTimestamp()
         // Avoid replaying stale stop commands that may exist from previous sessions.
         self.lastObservedStopCommandAt = LiveActivityCommandStore.latestStopRequestTimestamp()
+        startCommandWatcher()
     }
 
     deinit {
         tickerTask?.cancel()
+        commandWatcherTask?.cancel()
     }
 
     func startRecording() async {
@@ -195,7 +202,40 @@ final class RecordingStateStore: ObservableObject {
             isUploading: false
         )
 
+        await consumeRemoteCommandsIfNeeded()
+    }
+
+    private func startCommandWatcher() {
+        commandWatcherTask?.cancel()
+        commandWatcherTask = Task { [weak self] in
+            // Keep command handling alive while app process is running,
+            // even when no recording ticker is active.
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                await self?.consumeRemoteCommandsIfNeeded()
+            }
+        }
+    }
+
+    private func consumeRemoteCommandsIfNeeded() async {
+        await consumeRemoteStartCommandIfNeeded()
         await consumeRemoteStopCommandIfNeeded()
+    }
+
+    private func consumeRemoteStartCommandIfNeeded() async {
+        guard !isRecording, !isUploading, !isProcessingRemoteStart else { return }
+
+        let observedTimestamp = LiveActivityCommandStore.latestStartRequestTimestamp()
+        guard observedTimestamp > lastObservedStartCommandAt else { return }
+
+        lastObservedStartCommandAt = observedTimestamp
+        isProcessingRemoteStart = true
+
+        Task { [weak self] in
+            guard let self else { return }
+            await self.startRecording()
+            self.isProcessingRemoteStart = false
+        }
     }
 
     private func consumeRemoteStopCommandIfNeeded() async {

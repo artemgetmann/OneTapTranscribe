@@ -4,6 +4,7 @@ struct StopRecordingIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Stop Recording"
     static var description = IntentDescription("Stop the active OneTapTranscribe recording session.")
     static var openAppWhenRun: Bool = false
+    static var supportedModes: IntentModes = .background
     static var isDiscoverable: Bool = false
 
     func perform() async throws -> some IntentResult {
