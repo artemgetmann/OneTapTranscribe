@@ -2,6 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var stateStore: RecordingStateStore
+    @State private var showingBackendSettings = false
+    @State private var backendURLInput = AppConfig.transcriptionBaseURLString
+    @State private var clientTokenInput = AppConfig.clientToken ?? ""
+    @State private var currentBackendURL = AppConfig.transcriptionBaseURLString
+    @State private var backendConfigMessage: String?
 
     var body: some View {
         ZStack {
@@ -26,16 +31,45 @@ struct ContentView: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("OneTapTranscribe")
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                            .tracking(-0.4)
-                        Text("Instant voice capture and transcript")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.secondary)
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("OneTapTranscribe")
+                                .font(.system(size: 34, weight: .bold, design: .rounded))
+                                .tracking(-0.4)
+                            Text("Instant voice capture and transcript")
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer(minLength: 8)
+
+                        Button {
+                            backendURLInput = AppConfig.transcriptionBaseURLString
+                            clientTokenInput = AppConfig.clientToken ?? ""
+                            backendConfigMessage = nil
+                            showingBackendSettings = true
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.title3.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .padding(10)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(isUsingLocalBackend ? "Backend: Localhost (needs laptop)" : "Backend: Hosted (works anywhere)")
+                            .font(.footnote.weight(.semibold))
+                        Text(currentBackendURL)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .glassCard()
 
                     VStack(spacing: 14) {
                         HStack(alignment: .firstTextBaseline) {
@@ -131,11 +165,77 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(14)
                     .glassCard()
+
+                    if let backendConfigMessage {
+                        Text(backendConfigMessage)
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 8)
+                    }
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 24)
                 .padding(.bottom, 40)
             }
+        }
+        .sheet(isPresented: $showingBackendSettings) {
+            NavigationStack {
+                Form {
+                    Section("Backend URL") {
+                        TextField("https://your-api.example.com", text: $backendURLInput)
+                            .keyboardType(.URL)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Text("Use hosted HTTPS URL for phone-only usage.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section("Client Token (optional)") {
+                        TextField("Bearer token", text: $clientTokenInput)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Text("Set this only if backend has APP_CLIENT_TOKEN.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Section {
+                        Button("Save Backend Settings") {
+                            do {
+                                try AppConfig.setTranscriptionBaseURL(backendURLInput)
+                                AppConfig.setClientToken(clientTokenInput)
+                                refreshBackendSnapshot()
+                                backendConfigMessage = "Backend settings saved."
+                                showingBackendSettings = false
+                            } catch {
+                                backendConfigMessage = error.localizedDescription
+                            }
+                        }
+
+                        Button("Reset to bundled defaults", role: .destructive) {
+                            AppConfig.clearTranscriptionBaseURLOverride()
+                            AppConfig.setClientToken("")
+                            refreshBackendSnapshot()
+                            backendURLInput = AppConfig.transcriptionBaseURLString
+                            clientTokenInput = AppConfig.clientToken ?? ""
+                            backendConfigMessage = "Backend settings reset."
+                            showingBackendSettings = false
+                        }
+                    }
+                }
+                .navigationTitle("Backend")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") {
+                            showingBackendSettings = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 
@@ -143,6 +243,17 @@ struct ContentView: View {
         let mins = totalSeconds / 60
         let secs = totalSeconds % 60
         return String(format: "%d:%02d", mins, secs)
+    }
+
+    private var isUsingLocalBackend: Bool {
+        guard let host = URL(string: currentBackendURL)?.host?.lowercased() else {
+            return false
+        }
+        return host == "127.0.0.1" || host == "localhost"
+    }
+
+    private func refreshBackendSnapshot() {
+        currentBackendURL = AppConfig.transcriptionBaseURLString
     }
 }
 

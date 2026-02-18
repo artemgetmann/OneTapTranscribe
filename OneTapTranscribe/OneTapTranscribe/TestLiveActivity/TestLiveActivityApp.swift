@@ -7,7 +7,7 @@ struct TestLiveActivityApp: App {
     init() {
         let liveActivityService = LiveActivityService()
         let recorderService = RecorderService()
-        let apiClient = APIClient(baseURL: AppConfig.transcriptionBaseURL)
+        let apiClient = APIClient()
         let transcriptionQueue = TranscriptionQueue(apiClient: apiClient)
         let clipboardService = ClipboardService()
 

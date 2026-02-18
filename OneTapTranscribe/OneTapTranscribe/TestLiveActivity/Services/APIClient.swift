@@ -41,11 +41,13 @@ protocol APIClientProtocol: Sendable {
 /// Concrete network client for the backend proxy.
 /// The app never talks to OpenAI directly; it only talks to our own proxy.
 struct APIClient: APIClientProtocol, Sendable {
-    private let baseURL: URL
+    private let baseURLOverride: URL?
+    private let clientTokenOverride: String?
     private let session: URLSession
 
-    init(baseURL: URL, session: URLSession = .shared) {
-        self.baseURL = baseURL
+    init(baseURL: URL? = nil, clientToken: String? = nil, session: URLSession = .shared) {
+        self.baseURLOverride = baseURL
+        self.clientTokenOverride = clientToken
         self.session = session
     }
 
@@ -55,13 +57,18 @@ struct APIClient: APIClientProtocol, Sendable {
         language: String? = nil,
         prompt: String? = nil
     ) async throws -> TranscriptionResult {
-        let endpoint = baseURL.appendingPathComponent("/v1/transcribe")
+        // Resolve backend config at request time so settings changes apply immediately.
+        let resolvedBaseURL = baseURLOverride ?? AppConfig.transcriptionBaseURL
+        let endpoint = resolvedBaseURL.appendingPathComponent("v1/transcribe")
         let boundary = "Boundary-\(UUID().uuidString)"
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.timeoutInterval = 120
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue(UUID().uuidString, forHTTPHeaderField: "x-request-id")
+        if let token = resolvedClientToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
 
         let data = try buildMultipartBody(
             audioFileURL: audioFileURL,
@@ -91,6 +98,13 @@ struct APIClient: APIClientProtocol, Sendable {
         } catch {
             throw APIClientError.network(underlying: error)
         }
+    }
+
+    private func resolvedClientToken() -> String? {
+        if let override = clientTokenOverride?.trimmingCharacters(in: .whitespacesAndNewlines), !override.isEmpty {
+            return override
+        }
+        return AppConfig.clientToken
     }
 
     /// Construct multipart payload manually so we do not depend on third-party networking libs.
