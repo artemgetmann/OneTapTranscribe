@@ -12,9 +12,9 @@ protocol NotificationServiceProtocol {
 
 struct NotificationService: NotificationServiceProtocol {
 #if os(iOS)
-    fileprivate static let copyActionIdentifier = "TRANSCRIPTION_COPY_ACTION"
-    fileprivate static let resultCategoryIdentifier = "TRANSCRIPTION_RESULT_CATEGORY"
-    fileprivate static let cachedTranscriptDefaultsKey = "notification.cached_transcript"
+    static let copyActionIdentifier = "TRANSCRIPTION_COPY_ACTION"
+    static let resultCategoryIdentifier = "TRANSCRIPTION_RESULT_CATEGORY"
+    static let cachedTranscriptDefaultsKey = "notification.cached_transcript"
     fileprivate static let delegate = NotificationCenterDelegate()
 
     private let center = UNUserNotificationCenter.current()
@@ -33,7 +33,8 @@ struct NotificationService: NotificationServiceProtocol {
         let copyAction = UNNotificationAction(
             identifier: Self.copyActionIdentifier,
             title: "Copy transcript",
-            options: []
+            // Foreground action gives us a reliable lifecycle transition where pasteboard writes succeed.
+            options: [.foreground]
         )
         let resultCategory = UNNotificationCategory(
             identifier: Self.resultCategoryIdentifier,
@@ -53,12 +54,12 @@ struct NotificationService: NotificationServiceProtocol {
         defaults.set(transcript, forKey: cachedTranscriptDefaultsKey)
     }
 
-    fileprivate static func loadCachedTranscript() -> String? {
+    static func loadCachedTranscript() -> String? {
         let defaults = transcriptDefaults
         return defaults.string(forKey: cachedTranscriptDefaultsKey)
     }
 
-    fileprivate static func clearCachedTranscript() {
+    static func clearCachedTranscript() {
         transcriptDefaults.removeObject(forKey: cachedTranscriptDefaultsKey)
     }
 #endif
@@ -104,8 +105,7 @@ struct NotificationService: NotificationServiceProtocol {
 private final class NotificationCenterDelegate: NSObject, UNUserNotificationCenterDelegate {
     private enum CopyFeedback {
         case copied
-        case attemptedInBackground
-        case failed
+        case queuedForForeground
     }
 
     func userNotificationCenter(
@@ -119,31 +119,46 @@ private final class NotificationCenterDelegate: NSObject, UNUserNotificationCent
         }
 
         let transcript = NotificationService.loadCachedTranscript() ?? ""
-        let copyFeedback = Task { @MainActor in
-            let isActive = UIApplication.shared.applicationState == .active
-            let copied = ClipboardService().copy(transcript)
-            if isActive {
-                return copied ? CopyFeedback.copied : CopyFeedback.failed
+        guard !transcript.isEmpty else {
+            Task {
+                let feedback = UNMutableNotificationContent()
+                feedback.title = "Copy failed"
+                feedback.body = "No transcript found to copy."
+                feedback.sound = .default
+                let request = UNNotificationRequest(
+                    identifier: UUID().uuidString,
+                    content: feedback,
+                    trigger: nil
+                )
+                try? await center.add(request)
+                completionHandler()
             }
-            return copied ? CopyFeedback.attemptedInBackground : CopyFeedback.failed
+            return
+        }
+
+        // Persist first so copy can complete after app enters foreground.
+        DeferredClipboardStore.save(transcript)
+
+        let copyFeedback = Task { @MainActor in
+            let copied = ClipboardService().copy(transcript)
+            if copied {
+                DeferredClipboardStore.clear()
+                NotificationService.clearCachedTranscript()
+                return CopyFeedback.copied
+            }
+            return CopyFeedback.queuedForForeground
         }
 
         Task {
             let feedbackResult = await copyFeedback.value
-            if feedbackResult == .copied {
-                NotificationService.clearCachedTranscript()
-            }
             let feedback = UNMutableNotificationContent()
             switch feedbackResult {
             case .copied:
                 feedback.title = "Copied"
                 feedback.body = "Transcript copied to clipboard."
-            case .attemptedInBackground:
-                feedback.title = "Copy requested"
-                feedback.body = "Paste to verify. If missing, open app and tap Copy."
-            case .failed:
-                feedback.title = "Copy failed"
-                feedback.body = "Couldn't copy in background. Open app and tap Copy."
+            case .queuedForForeground:
+                feedback.title = "Copy queued"
+                feedback.body = "Opening app to finish clipboard copy."
             }
             feedback.sound = .default
             let request = UNNotificationRequest(

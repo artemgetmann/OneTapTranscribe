@@ -45,6 +45,9 @@ final class RecordingStateStore: ObservableObject {
         self.lastObservedStartCommandAt = LiveActivityCommandStore.latestStartRequestTimestamp()
         // Avoid replaying stale stop commands that may exist from previous sessions.
         self.lastObservedStopCommandAt = LiveActivityCommandStore.latestStopRequestTimestamp()
+        // Restore pending clipboard state in case previous copy attempt happened while app was backgrounded.
+        self.pendingClipboardText = DeferredClipboardStore.load()
+        self.hasPendingClipboardCopy = self.pendingClipboardText?.isEmpty == false
         startCommandWatcher()
     }
 
@@ -166,13 +169,19 @@ final class RecordingStateStore: ObservableObject {
     }
 
     func handleAppDidBecomeActive() {
-        guard let pendingClipboardText, !pendingClipboardText.isEmpty else { return }
-        let copied = clipboardService.copy(pendingClipboardText)
+        let pending = pendingClipboardText ?? DeferredClipboardStore.load()
+        guard let pending, !pending.isEmpty else { return }
+        let copied = clipboardService.copy(pending)
         if copied {
             self.pendingClipboardText = nil
+            DeferredClipboardStore.clear()
             hasPendingClipboardCopy = false
             statusMessage = "Transcript copied to clipboard."
         } else {
+            // Keep durable fallback so user can retry after returning to foreground again.
+            DeferredClipboardStore.save(pending)
+            self.pendingClipboardText = pending
+            hasPendingClipboardCopy = true
             statusMessage = "Transcript ready, but copy failed."
         }
     }
@@ -269,6 +278,7 @@ final class RecordingStateStore: ObservableObject {
         // Force deferred path so notification action/app-open fallback is always available.
         if UIApplication.shared.applicationState != .active {
             pendingClipboardText = transcript
+            DeferredClipboardStore.save(transcript)
             hasPendingClipboardCopy = true
             return .deferred
         }
@@ -277,11 +287,13 @@ final class RecordingStateStore: ObservableObject {
         let copied = clipboardService.copy(transcript)
         if copied {
             pendingClipboardText = nil
+            DeferredClipboardStore.clear()
             hasPendingClipboardCopy = false
             return .copied
         }
         // Keep fallback path for OS-rejected background writes.
         pendingClipboardText = transcript
+        DeferredClipboardStore.save(transcript)
         hasPendingClipboardCopy = true
         return .deferred
     }
