@@ -1,5 +1,8 @@
 import Combine
 import Foundation
+#if os(iOS)
+import UIKit
+#endif
 
 @MainActor
 final class RecordingStateStore: ObservableObject {
@@ -220,6 +223,17 @@ final class RecordingStateStore: ObservableObject {
 
     private func copyTranscriptRespectingLifecycle(_ transcript: String) -> ClipboardCopyResult {
         guard !transcript.isEmpty else { return .failed }
+
+#if os(iOS)
+        // Background clipboard writes are not reliable on iOS.
+        // Force deferred path so notification action/app-open fallback is always available.
+        if UIApplication.shared.applicationState != .active {
+            pendingClipboardText = transcript
+            hasPendingClipboardCopy = true
+            return .deferred
+        }
+#endif
+
         let copied = clipboardService.copy(transcript)
         if copied {
             pendingClipboardText = nil

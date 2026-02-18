@@ -33,22 +33,19 @@ struct RecordingLiveActivityWidget: Widget {
                 }
 
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack(spacing: 10) {
-                        LiveWaveformView(isActive: !context.state.isUploading)
-                            .frame(width: 78, height: 18)
-
-                        Spacer(minLength: 0)
-
-                        Button(intent: StopRecordingIntent()) {
-                            Label("Stop", systemImage: "stop.circle.fill")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(Capsule().fill(.red))
+                    Button(intent: StopRecordingIntent()) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "stop.fill")
+                                .font(.headline.weight(.bold))
+                            Text("Stop Recording")
+                                .font(.headline.weight(.bold))
                         }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .foregroundStyle(.white)
+                        .background(Capsule().fill(.red))
                     }
-                    .padding(.horizontal, 4)
+                    .buttonStyle(.plain)
                 }
             } compactLeading: {
                 HStack(spacing: 4) {

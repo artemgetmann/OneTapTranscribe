@@ -102,6 +102,12 @@ struct NotificationService: NotificationServiceProtocol {
 
 #if os(iOS)
 private final class NotificationCenterDelegate: NSObject, UNUserNotificationCenterDelegate {
+    private enum CopyFeedback {
+        case copied
+        case attemptedInBackground
+        case failed
+    }
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
@@ -113,20 +119,32 @@ private final class NotificationCenterDelegate: NSObject, UNUserNotificationCent
         }
 
         let transcript = NotificationService.loadCachedTranscript() ?? ""
-        let copied = Task { @MainActor in
-            ClipboardService().copy(transcript)
+        let copyFeedback = Task { @MainActor in
+            let isActive = UIApplication.shared.applicationState == .active
+            let copied = ClipboardService().copy(transcript)
+            if isActive {
+                return copied ? CopyFeedback.copied : CopyFeedback.failed
+            }
+            return copied ? CopyFeedback.attemptedInBackground : CopyFeedback.failed
         }
 
         Task {
-            let didCopy = await copied.value
-            if didCopy {
+            let feedbackResult = await copyFeedback.value
+            if feedbackResult == .copied {
                 NotificationService.clearCachedTranscript()
             }
             let feedback = UNMutableNotificationContent()
-            feedback.title = didCopy ? "Copied" : "Copy failed"
-            feedback.body = didCopy
-                ? "Transcript copied to clipboard."
-                : "Couldn't copy in background. Open app and tap Copy."
+            switch feedbackResult {
+            case .copied:
+                feedback.title = "Copied"
+                feedback.body = "Transcript copied to clipboard."
+            case .attemptedInBackground:
+                feedback.title = "Copy requested"
+                feedback.body = "Paste to verify. If missing, open app and tap Copy."
+            case .failed:
+                feedback.title = "Copy failed"
+                feedback.body = "Couldn't copy in background. Open app and tap Copy."
+            }
             feedback.sound = .default
             let request = UNNotificationRequest(
                 identifier: UUID().uuidString,
