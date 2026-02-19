@@ -4,6 +4,8 @@ import OSLog
 struct StartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
+    // Control Center start must foreground the app because microphone capture cannot start in background.
+    static var openAppWhenRun: Bool = true
     // Control Center should be able to trigger this without an unlock gate.
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     // iOS 26+ foreground mode declaration.

@@ -4,6 +4,8 @@ import OSLog
 struct StartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
+    // Keep app-target intent behavior aligned with extension intent.
+    static var openAppWhenRun: Bool = true
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     static var supportedModes: IntentModes = .foreground(.dynamic)
     static var isDiscoverable: Bool = true

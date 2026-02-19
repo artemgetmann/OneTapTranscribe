@@ -24,6 +24,7 @@ final class RecordingStateStore: ObservableObject {
     private var commandWatcherTask: Task<Void, Never>?
     private var lastObservedStartCommandAt: TimeInterval = 0
     private var lastObservedStopCommandAt: TimeInterval = 0
+    private var lastDeferredStartCommandAt: TimeInterval = 0
     private var isProcessingRemoteStart = false
     private var isProcessingRemoteStop = false
     private var pendingClipboardText: String?
@@ -253,6 +254,19 @@ final class RecordingStateStore: ObservableObject {
 
         let observedTimestamp = LiveActivityCommandStore.latestStartRequestTimestamp()
         guard observedTimestamp > lastObservedStartCommandAt else { return }
+
+#if os(iOS)
+        // iOS blocks AVAudioRecorder start while app is backgrounded ("Target is not foreground").
+        // Do not consume the command yet; keep it pending and let foreground transition trigger consumption.
+        if UIApplication.shared.applicationState != .active {
+            if observedTimestamp > lastDeferredStartCommandAt {
+                logger.info("consumeRemoteStartCommand deferredUntilForeground observedTimestamp=\(observedTimestamp, privacy: .public)")
+                lastDeferredStartCommandAt = observedTimestamp
+            }
+            return
+        }
+#endif
+
         logger.info("consumeRemoteStartCommand observedTimestamp=\(observedTimestamp, privacy: .public) lastObserved=\(self.lastObservedStartCommandAt, privacy: .public)")
 
         lastObservedStartCommandAt = observedTimestamp
