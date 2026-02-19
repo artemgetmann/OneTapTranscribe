@@ -1,13 +1,12 @@
 import AppIntents
 import OSLog
 
-struct StartRecordingIntent: AppIntent {
+struct StartRecordingIntent: AudioRecordingIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
-    // Keep app-target intent behavior aligned with extension intent.
-    static var openAppWhenRun: Bool = true
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    static var supportedModes: IntentModes = .foreground(.dynamic)
+    // R&D spike: allow background execution path and let system decide if it can keep app hidden.
+    static var supportedModes: IntentModes = .background
     static var isDiscoverable: Bool = true
 
     private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "ControlIntent")

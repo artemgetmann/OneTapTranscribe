@@ -24,7 +24,7 @@ final class RecordingStateStore: ObservableObject {
     private var commandWatcherTask: Task<Void, Never>?
     private var lastObservedStartCommandAt: TimeInterval = 0
     private var lastObservedStopCommandAt: TimeInterval = 0
-    private var lastDeferredStartCommandAt: TimeInterval = 0
+    private var nextStartRetryAt: TimeInterval = 0
     private var isProcessingRemoteStart = false
     private var isProcessingRemoteStop = false
     private var pendingClipboardText: String?
@@ -251,31 +251,25 @@ final class RecordingStateStore: ObservableObject {
 
     private func consumeRemoteStartCommandIfNeeded() async {
         guard !isRecording, !isUploading, !isProcessingRemoteStart else { return }
+        guard Date().timeIntervalSince1970 >= nextStartRetryAt else { return }
 
         let observedTimestamp = LiveActivityCommandStore.latestStartRequestTimestamp()
         guard observedTimestamp > lastObservedStartCommandAt else { return }
-
-#if os(iOS)
-        // iOS blocks AVAudioRecorder start while app is backgrounded ("Target is not foreground").
-        // Do not consume the command yet; keep it pending and let foreground transition trigger consumption.
-        if UIApplication.shared.applicationState != .active {
-            if observedTimestamp > lastDeferredStartCommandAt {
-                logger.info("consumeRemoteStartCommand deferredUntilForeground observedTimestamp=\(observedTimestamp, privacy: .public)")
-                lastDeferredStartCommandAt = observedTimestamp
-            }
-            return
-        }
-#endif
-
-        logger.info("consumeRemoteStartCommand observedTimestamp=\(observedTimestamp, privacy: .public) lastObserved=\(self.lastObservedStartCommandAt, privacy: .public)")
-
-        lastObservedStartCommandAt = observedTimestamp
-        LiveActivityCommandStore.markStartRequestConsumed(observedTimestamp)
         isProcessingRemoteStart = true
 
         Task { [weak self] in
             guard let self else { return }
+            self.logger.info("consumeRemoteStartCommand observedTimestamp=\(observedTimestamp, privacy: .public) lastObserved=\(self.lastObservedStartCommandAt, privacy: .public)")
             await self.startRecording()
+            if self.isRecording {
+                self.lastObservedStartCommandAt = observedTimestamp
+                LiveActivityCommandStore.markStartRequestConsumed(observedTimestamp)
+                self.nextStartRetryAt = 0
+            } else {
+                // Keep command unconsumed so a foreground transition can retry the same request.
+                self.nextStartRetryAt = Date().timeIntervalSince1970 + 1.5
+                self.logger.error("consumeRemoteStartCommand startFailed willRetry timestamp=\(observedTimestamp, privacy: .public)")
+            }
             self.isProcessingRemoteStart = false
         }
     }
