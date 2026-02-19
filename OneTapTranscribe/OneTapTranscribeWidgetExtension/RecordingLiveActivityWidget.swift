@@ -26,34 +26,35 @@ struct RecordingLiveActivityWidget: Widget {
                         Image(systemName: "waveform")
                             .font(.caption2.weight(.semibold))
                     }
+                    .padding(.leading, 8)
                 }
 
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(formatTime(context.state.elapsedSeconds))
-                        .font(.system(.title2, design: .monospaced))
-                        .fontWeight(.bold)
+                    Button(intent: StopRecordingIntent()) {
+                        ZStack {
+                            Circle()
+                                .fill(brandGradient)
+                                .frame(width: 30, height: 30)
+
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(.white)
+                                .frame(width: 9, height: 9)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Stop recording")
                 }
 
                 DynamicIslandExpandedRegion(.center) {
-                    Text(context.state.isUploading ? "Uploading..." : "Recording...")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                    VStack(spacing: 2) {
+                        Text(context.state.isUploading ? "Uploading..." : "Recording...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
 
-                DynamicIslandExpandedRegion(.bottom) {
-                    Button(intent: StopRecordingIntent()) {
-                        HStack(spacing: 10) {
-                            Image(systemName: "stop.fill")
-                                .font(.headline.weight(.bold))
-                            Text("Stop Recording")
-                                .font(.headline.weight(.bold))
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .foregroundStyle(.white)
-                        .background(Capsule().fill(brandGradient))
+                        Text(formatTime(context.state.elapsedSeconds))
+                            .font(.system(.title3, design: .monospaced))
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.plain)
                 }
             } compactLeading: {
                 HStack(spacing: 4) {
@@ -63,10 +64,27 @@ struct RecordingLiveActivityWidget: Widget {
                     Image(systemName: "waveform")
                         .font(.caption2.weight(.semibold))
                 }
+                .padding(.leading, 4)
             } compactTrailing: {
-                Text(formatTime(context.state.elapsedSeconds))
-                    .font(.system(.caption, design: .monospaced))
-                    .fontWeight(.medium)
+                HStack(spacing: 6) {
+                    Text(formatTime(context.state.elapsedSeconds))
+                        .font(.system(.caption, design: .monospaced))
+                        .fontWeight(.medium)
+
+                    Button(intent: StopRecordingIntent()) {
+                        ZStack {
+                            Circle()
+                                .fill(brandGradient)
+                                .frame(width: 20, height: 20)
+
+                            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                                .fill(.white)
+                                .frame(width: 6, height: 6)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Stop recording")
+                }
             } minimal: {
                 Circle()
                     .fill(brandGradient)
