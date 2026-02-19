@@ -8,9 +8,10 @@
 ## Decision Snapshot
 - Current 80/20 product decision and iOS constraint notes are tracked in `docs/ROADMAP_80_20.md`.
 
-## Current Status (2026-02-18)
+## Current Status (2026-02-19)
 - iOS app target builds and runs with Live Activity widget extension embedded.
-- Dynamic Island / lock-screen UI includes a stop control that routes through app deep link (`onetaptranscribe://stop`).
+- Control Center start action is wired through App Intent and currently prioritizes reliability by foregrounding app on start.
+- Dynamic Island / lock-screen UI includes stop controls that work from Live Activity surfaces.
 - Core flow is working: record -> stop -> upload/transcribe via backend -> copy transcript to clipboard.
 - Backend proxy path (`POST /v1/transcribe`) is validated in local runs.
 - Cloud readiness is prepared: runtime backend URL/token settings in app and hosting guide in `docs/HOSTING.md`.

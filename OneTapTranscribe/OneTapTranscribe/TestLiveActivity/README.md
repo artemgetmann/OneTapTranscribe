@@ -29,7 +29,7 @@ This folder contains a minimal architecture scaffold for validating Live Activit
 
 - Retry queue is in-memory only (not persisted across app relaunches yet).
 - iOS build requires a real Xcode project + full Xcode install (not just Command Line Tools).
-- Deep-link stop currently opens app before stopping (good for reliability, not fully native background intent behavior yet).
+- Control Center start currently foregrounds app for reliability on real devices; true hidden background start remains R&D.
 
 ## Next Integration Steps
 

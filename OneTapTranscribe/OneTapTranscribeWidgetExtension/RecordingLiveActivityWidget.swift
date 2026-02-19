@@ -34,14 +34,15 @@ struct RecordingLiveActivityWidget: Widget {
                         ZStack {
                             Circle()
                                 .fill(brandGradient)
-                                .frame(width: 30, height: 30)
+                                .frame(width: 42, height: 42)
 
                             RoundedRectangle(cornerRadius: 2, style: .continuous)
                                 .fill(.white)
-                                .frame(width: 9, height: 9)
+                                .frame(width: 12, height: 12)
                         }
                     }
                     .buttonStyle(.plain)
+                    .contentShape(Circle())
                     .accessibilityLabel("Stop recording")
                 }
 
@@ -63,28 +64,26 @@ struct RecordingLiveActivityWidget: Widget {
                         .frame(width: 6, height: 6)
                     Image(systemName: "waveform")
                         .font(.caption2.weight(.semibold))
-                }
-                .padding(.leading, 4)
-            } compactTrailing: {
-                HStack(spacing: 6) {
                     Text(formatTime(context.state.elapsedSeconds))
                         .font(.system(.caption, design: .monospaced))
                         .fontWeight(.medium)
-
-                    Button(intent: StopRecordingIntent()) {
-                        ZStack {
-                            Circle()
-                                .fill(brandGradient)
-                                .frame(width: 20, height: 20)
-
-                            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
-                                .fill(.white)
-                                .frame(width: 6, height: 6)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Stop recording")
                 }
+                .padding(.leading, 4)
+            } compactTrailing: {
+                Button(intent: StopRecordingIntent()) {
+                    ZStack {
+                        Circle()
+                            .fill(brandGradient)
+                            .frame(width: 32, height: 32)
+
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .fill(.white)
+                            .frame(width: 10, height: 10)
+                    }
+                }
+                .buttonStyle(.plain)
+                .contentShape(Circle())
+                .accessibilityLabel("Stop recording")
             } minimal: {
                 Circle()
                     .fill(brandGradient)
