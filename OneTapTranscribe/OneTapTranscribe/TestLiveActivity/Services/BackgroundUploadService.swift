@@ -8,6 +8,11 @@ final class BackgroundUploadService: NSObject {
     static let shared = BackgroundUploadService()
     static let sessionIdentifier = "test.OneTapTranscribe.background-upload"
 
+    private enum NetworkTuning {
+        static let requestTimeoutSeconds: TimeInterval = 25
+        static let resourceTimeoutSeconds: TimeInterval = 180
+    }
+
     private struct PendingTask {
         var responseData = Data()
         let bodyFileURL: URL
@@ -21,9 +26,10 @@ final class BackgroundUploadService: NSObject {
     private lazy var session: URLSession = {
         let configuration = URLSessionConfiguration.background(withIdentifier: Self.sessionIdentifier)
         configuration.isDiscretionary = false
-        configuration.waitsForConnectivity = true
-        configuration.timeoutIntervalForRequest = 120
-        configuration.timeoutIntervalForResource = 600
+        // Fail and retry from our queue instead of waiting indefinitely for connectivity.
+        configuration.waitsForConnectivity = false
+        configuration.timeoutIntervalForRequest = NetworkTuning.requestTimeoutSeconds
+        configuration.timeoutIntervalForResource = NetworkTuning.resourceTimeoutSeconds
         configuration.sessionSendsLaunchEvents = true
         return URLSession(
             configuration: configuration,

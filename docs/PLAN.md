@@ -5,6 +5,9 @@
 - Your differentiator is non-invasive recording control while multitasking.
 - Therefore: build iPhone app first, keep scope brutally small, then expand.
 
+## Decision Snapshot
+- Current 80/20 product decision and iOS constraint notes are tracked in `docs/ROADMAP_80_20.md`.
+
 ## Current Status (2026-02-18)
 - iOS app target builds and runs with Live Activity widget extension embedded.
 - Dynamic Island / lock-screen UI includes a stop control that routes through app deep link (`onetaptranscribe://stop`).

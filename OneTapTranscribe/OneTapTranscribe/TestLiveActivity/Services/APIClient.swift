@@ -44,6 +44,10 @@ protocol APIClientProtocol: Sendable {
 /// Concrete network client for the backend proxy.
 /// The app never talks to OpenAI directly; it only talks to our own proxy.
 struct APIClient: APIClientProtocol, Sendable {
+    private enum NetworkTuning {
+        static let requestTimeoutSeconds: TimeInterval = 25
+    }
+
     private let baseURLOverride: URL?
     private let clientTokenOverride: String?
     private let session: URLSession
@@ -124,7 +128,8 @@ struct APIClient: APIClientProtocol, Sendable {
     private func makeRequest(endpoint: URL, boundary: String) -> URLRequest {
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.timeoutInterval = 120
+        // Fail fast enough to allow queue retries to recover from Render cold starts.
+        request.timeoutInterval = NetworkTuning.requestTimeoutSeconds
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
         request.setValue(UUID().uuidString, forHTTPHeaderField: "x-request-id")
         return request
