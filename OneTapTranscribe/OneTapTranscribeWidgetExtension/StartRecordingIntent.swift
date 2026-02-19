@@ -1,21 +1,23 @@
 import AppIntents
 import OSLog
 
-struct StartRecordingIntent: AudioRecordingIntent {
+struct StartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
-    // Keep identifier stable so app and extension can advertise the same action identity.
-    static var persistentIdentifier: String = "com.onetaptranscribe.intent.startRecording"
-    // iOS 26+ expects foreground behavior to be declared via supportedModes.
-    // `.foreground(.dynamic)` lets the system decide the right foreground transition.
+    // Control Center should be able to trigger this without an unlock gate.
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
+    // iOS 26+ foreground mode declaration.
     static var supportedModes: IntentModes = .foreground(.dynamic)
-    static var isDiscoverable: Bool = false
+    static var isDiscoverable: Bool = true
 
     private let logger = Logger(subsystem: "test.OneTapTranscribe.WidgetExtension", category: "ControlIntent")
 
     func perform() async throws -> some IntentResult {
         let published = LiveActivityCommandStore.publishStartRequest()
         logger.info("StartRecordingIntent perform() publishedStartRequest=\(published, privacy: .public)")
+        if !published {
+            logger.error("StartRecordingIntent failed to publish start request to app-group defaults")
+        }
         return .result()
     }
 }

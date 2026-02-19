@@ -1,19 +1,21 @@
 import AppIntents
 import OSLog
 
-struct StartRecordingIntent: AudioRecordingIntent {
+struct StartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
-    static var persistentIdentifier: String = "com.onetaptranscribe.intent.startRecording"
-    // Keep app-side declaration aligned with extension-side mode semantics.
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
     static var supportedModes: IntentModes = .foreground(.dynamic)
-    static var isDiscoverable: Bool = false
+    static var isDiscoverable: Bool = true
 
     private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "ControlIntent")
 
     func perform() async throws -> some IntentResult {
         let published = LiveActivityCommandStore.publishStartRequest()
         logger.info("App StartRecordingIntent perform() publishedStartRequest=\(published, privacy: .public)")
+        if !published {
+            logger.error("App StartRecordingIntent failed to publish start request to app-group defaults")
+        }
         return .result()
     }
 }
