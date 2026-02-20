@@ -1,14 +1,12 @@
 import AppIntents
 import OSLog
 
-struct StartRecordingIntent: AudioRecordingIntent {
+struct StartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    // Keep background mode declared for compatibility with control surfaces.
-    static var supportedModes: IntentModes = .background
-    // Real devices reject AVAudioRecorder startup from cold/background launches.
-    // For reliability, force foreground transition before consuming the start command.
+    // Force a foreground launch from Control Center for reliable mic startup.
+    static var supportedModes: IntentModes = .foreground(.dynamic)
     static var openAppWhenRun: Bool = true
     static var isDiscoverable: Bool = true
 
