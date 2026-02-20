@@ -1,14 +1,15 @@
 import AppIntents
 import OSLog
 
-struct StartRecordingIntent: AppIntent {
-    static var title: LocalizedStringResource = "Start Recording"
+struct AppStartRecordingIntent: AppIntent {
+    static var title: LocalizedStringResource = "App Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    // Force a foreground launch from Control Center for reliable mic startup.
+    // Keep app-local intent foreground-capable, but hide it from user-facing discovery
+    // so Control Center binds to the widget-extension intent path instead.
     static var supportedModes: IntentModes = .foreground(.dynamic)
     static var openAppWhenRun: Bool = true
-    static var isDiscoverable: Bool = true
+    static var isDiscoverable: Bool = false
 
     private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "ControlIntent")
 

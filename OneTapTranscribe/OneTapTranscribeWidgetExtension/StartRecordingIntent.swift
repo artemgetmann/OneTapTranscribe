@@ -1,7 +1,7 @@
 import AppIntents
 import OSLog
 
-struct StartRecordingIntent: AppIntent {
+struct ControlCenterStartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed

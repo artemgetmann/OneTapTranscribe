@@ -6,7 +6,7 @@ import WidgetKit
 struct OneTapRecordControlWidget: ControlWidget {
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: "test.OneTapTranscribe.control.startRecording") {
-            ControlWidgetButton(action: StartRecordingIntent()) {
+            ControlWidgetButton(action: ControlCenterStartRecordingIntent()) {
                 Label("Start Recording", systemImage: "waveform.circle.fill")
             }
             .tint(Color(red: 0.604, green: 0.424, blue: 0.973))
