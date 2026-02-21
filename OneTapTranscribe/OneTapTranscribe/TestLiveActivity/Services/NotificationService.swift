@@ -8,6 +8,7 @@ import UserNotifications
 protocol NotificationServiceProtocol {
     func requestAuthorizationIfNeeded() async
     func notifyTranscriptionResult(success: Bool, body: String, transcriptForCopy: String?) async
+    func notifyTapToStartRecording() async
 }
 
 struct NotificationService: NotificationServiceProtocol {
@@ -97,6 +98,22 @@ struct NotificationService: NotificationServiceProtocol {
         _ = success
         _ = body
         _ = transcriptForCopy
+#endif
+    }
+
+    func notifyTapToStartRecording() async {
+#if os(iOS)
+        let content = UNMutableNotificationContent()
+        content.title = "Tap to start recording"
+        content.body = "iOS blocked background start. Tap this notification to open OneTapTranscribe and start."
+        content.sound = .default
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+        try? await center.add(request)
 #endif
     }
 }

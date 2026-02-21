@@ -31,6 +31,7 @@ final class RecordingStateStore: ObservableObject {
     private var isProcessingRemoteStop = false
     private var isProcessingDeferredTranscriptions = false
     private var deferredTranscriptionRetryAttempt = 0
+    private var lastForegroundStartPromptTimestamp: TimeInterval = 0
     private var pendingClipboardText: String?
     private var pendingTranscriptionFiles: [URL] = []
 #if os(iOS)
@@ -254,6 +255,9 @@ final class RecordingStateStore: ObservableObject {
                 // Keep command unconsumed so a foreground transition can retry the same request.
                 self.nextStartRetryAt = Date().timeIntervalSince1970 + 1.5
                 self.logger.error("consumeRemoteStartCommand startFailed willRetry timestamp=\(observedTimestamp, privacy: .public)")
+                if await self.shouldNotifyForegroundStartPrompt(observedTimestamp: observedTimestamp) {
+                    await self.notificationService.notifyTapToStartRecording()
+                }
             }
             self.isProcessingRemoteStart = false
         }
@@ -387,6 +391,18 @@ final class RecordingStateStore: ObservableObject {
         let power = min(deferredTranscriptionRetryAttempt, 6)
         let exponential = pow(2.0, Double(power))
         return max(5, min(90, exponential))
+    }
+
+    private func shouldNotifyForegroundStartPrompt(observedTimestamp: TimeInterval) async -> Bool {
+#if os(iOS)
+        guard UIApplication.shared.applicationState != .active else { return false }
+        guard observedTimestamp > lastForegroundStartPromptTimestamp else { return false }
+        lastForegroundStartPromptTimestamp = observedTimestamp
+        return true
+#else
+        _ = observedTimestamp
+        return false
+#endif
     }
 
     private func installAudioInterruptionObserver() {

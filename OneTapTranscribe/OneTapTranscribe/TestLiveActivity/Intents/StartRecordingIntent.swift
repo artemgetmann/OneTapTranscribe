@@ -1,15 +1,16 @@
 import AppIntents
 import OSLog
 
-struct AppStartRecordingIntent: AppIntent {
-    static var title: LocalizedStringResource = "App Start Recording"
+// Workaround for iOS Control Center openAppWhenRun inconsistencies:
+// keep a matching control intent type in the app target as well as the widget extension target.
+struct ControlCenterStartRecordingIntent: AppIntent {
+    static var title: LocalizedStringResource = "Start Recording"
     static var description = IntentDescription("Start a OneTapTranscribe recording session.")
     static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
-    // Keep app-local intent foreground-capable, but hide it from user-facing discovery
-    // so Control Center binds to the widget-extension intent path instead.
+    // Force a foreground launch when this control intent executes.
     static var supportedModes: IntentModes = .foreground(.dynamic)
     static var openAppWhenRun: Bool = true
-    static var isDiscoverable: Bool = false
+    static var isDiscoverable: Bool = true
 
     private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "ControlIntent")
 
