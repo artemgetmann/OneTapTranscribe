@@ -2,6 +2,7 @@ import Combine
 import Foundation
 import OSLog
 #if os(iOS)
+import AVFoundation
 import UIKit
 #endif
 
@@ -25,9 +26,16 @@ final class RecordingStateStore: ObservableObject {
     private var lastObservedStartCommandAt: TimeInterval = 0
     private var lastObservedStopCommandAt: TimeInterval = 0
     private var nextStartRetryAt: TimeInterval = 0
+    private var nextDeferredTranscriptionRetryAt: TimeInterval = 0
     private var isProcessingRemoteStart = false
     private var isProcessingRemoteStop = false
+    private var isProcessingDeferredTranscriptions = false
+    private var deferredTranscriptionRetryAttempt = 0
     private var pendingClipboardText: String?
+    private var pendingTranscriptionFiles: [URL] = []
+#if os(iOS)
+    private var audioInterruptionObserver: NSObjectProtocol?
+#endif
     private let logger = Logger(subsystem: "test.OneTapTranscribe", category: "RecordingStateStore")
 
     init(
@@ -51,12 +59,25 @@ final class RecordingStateStore: ObservableObject {
         // Restore pending clipboard state in case previous copy attempt happened while app was backgrounded.
         self.pendingClipboardText = DeferredClipboardStore.load()
         self.hasPendingClipboardCopy = self.pendingClipboardText?.isEmpty == false
+        self.pendingTranscriptionFiles = DeferredTranscriptionStore.load()
+        if !self.pendingTranscriptionFiles.isEmpty {
+            self.statusMessage = "Pending transcription queued. Retrying automatically."
+        }
+        installAudioInterruptionObserver()
         startCommandWatcher()
+        Task { [weak self] in
+            await self?.processPendingTranscriptionsIfNeeded(force: true)
+        }
     }
 
     deinit {
         tickerTask?.cancel()
         commandWatcherTask?.cancel()
+#if os(iOS)
+        if let audioInterruptionObserver {
+            NotificationCenter.default.removeObserver(audioInterruptionObserver)
+        }
+#endif
     }
 
     func startRecording() async {
@@ -114,46 +135,8 @@ final class RecordingStateStore: ObservableObject {
             }
 
             statusMessage = "Queued for transcription..."
-            do {
-                // Queue retries transient failures to survive poor network and handoffs.
-                let transcript = try await transcriptionQueue.enqueue(audioFileURL: audioFileURL)
-                lastTranscript = transcript
-                let copyResult = copyTranscriptRespectingLifecycle(transcript)
-                switch copyResult {
-                case .copied:
-                    statusMessage = "Stopped. Transcript copied to clipboard."
-                    logger.info("stopRecording completed copyResult=copied transcriptLength=\(transcript.count, privacy: .public)")
-                    await notificationService.notifyTranscriptionResult(
-                        success: true,
-                        body: "Transcript copied to clipboard.",
-                        transcriptForCopy: nil
-                    )
-                case .deferred:
-                    statusMessage = "Stopped. Transcript ready. Tap notification to open app and copy."
-                    logger.info("stopRecording completed copyResult=deferred transcriptLength=\(transcript.count, privacy: .public)")
-                    await notificationService.notifyTranscriptionResult(
-                        success: true,
-                        body: "Transcript ready. Tap Open app & copy.",
-                        transcriptForCopy: transcript
-                    )
-                case .failed:
-                    statusMessage = "Stopped. Transcript ready."
-                    logger.info("stopRecording completed copyResult=failed transcriptLength=\(transcript.count, privacy: .public)")
-                    await notificationService.notifyTranscriptionResult(
-                        success: true,
-                        body: "Transcript is ready.",
-                        transcriptForCopy: nil
-                    )
-                }
-            } catch {
-                statusMessage = "Stopped. Transcription failed: \(error.localizedDescription)"
-                logger.error("stopRecording transcription failed error=\(error.localizedDescription, privacy: .public)")
-                await notificationService.notifyTranscriptionResult(
-                    success: false,
-                    body: error.localizedDescription,
-                    transcriptForCopy: nil
-                )
-            }
+            enqueueDeferredTranscription(audioFileURL)
+            await processPendingTranscriptionsIfNeeded(force: true)
         } catch {
             // Ensure lock screen UI is not orphaned if recorder teardown throws.
             await liveActivityService.stopLiveActivity()
@@ -201,6 +184,7 @@ final class RecordingStateStore: ObservableObject {
         // Consume any pending control-widget command immediately on foreground transition.
         Task { [weak self] in
             await self?.consumeRemoteCommandsIfNeeded()
+            await self?.processPendingTranscriptionsIfNeeded(force: true)
         }
     }
 
@@ -240,6 +224,7 @@ final class RecordingStateStore: ObservableObject {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 500_000_000)
                 await self?.consumeRemoteCommandsIfNeeded()
+                await self?.processPendingTranscriptionsIfNeeded()
             }
         }
     }
@@ -291,6 +276,141 @@ final class RecordingStateStore: ObservableObject {
             await self.stopRecording()
             self.isProcessingRemoteStop = false
         }
+    }
+
+    private func enqueueDeferredTranscription(_ fileURL: URL) {
+        let exists = pendingTranscriptionFiles.contains(where: { $0.path == fileURL.path })
+        guard !exists else { return }
+        pendingTranscriptionFiles.append(fileURL)
+        DeferredTranscriptionStore.save(pendingTranscriptionFiles)
+        logger.info("enqueueDeferredTranscription count=\(self.pendingTranscriptionFiles.count, privacy: .public) path=\(fileURL.path, privacy: .public)")
+    }
+
+    private func processPendingTranscriptionsIfNeeded(force: Bool = false) async {
+        guard !isProcessingDeferredTranscriptions else { return }
+        guard !pendingTranscriptionFiles.isEmpty else { return }
+        guard force || Date().timeIntervalSince1970 >= nextDeferredTranscriptionRetryAt else { return }
+
+        isProcessingDeferredTranscriptions = true
+        defer { isProcessingDeferredTranscriptions = false }
+
+        while !pendingTranscriptionFiles.isEmpty {
+            let audioFileURL = pendingTranscriptionFiles[0]
+
+            guard FileManager.default.fileExists(atPath: audioFileURL.path) else {
+                logger.error("processPendingTranscriptions missingFile path=\(audioFileURL.path, privacy: .public)")
+                pendingTranscriptionFiles.removeFirst()
+                DeferredTranscriptionStore.save(pendingTranscriptionFiles)
+                continue
+            }
+
+            do {
+                let transcript = try await transcriptionQueue.enqueue(audioFileURL: audioFileURL)
+
+                // Remove durable job only after we have a transcript.
+                pendingTranscriptionFiles.removeFirst()
+                DeferredTranscriptionStore.save(pendingTranscriptionFiles)
+                deferredTranscriptionRetryAttempt = 0
+                nextDeferredTranscriptionRetryAt = 0
+                try? FileManager.default.removeItem(at: audioFileURL)
+
+                await handleSuccessfulTranscription(transcript)
+            } catch {
+                deferredTranscriptionRetryAttempt += 1
+                let retryable = isRetryableTranscriptionError(error)
+                let delaySeconds = nextDeferredRetryDelaySeconds(retryable: retryable)
+                nextDeferredTranscriptionRetryAt = Date().timeIntervalSince1970 + delaySeconds
+
+                if retryable {
+                    statusMessage = "Transcription queued. Retrying automatically..."
+                } else {
+                    statusMessage = "Transcription queued. Waiting for backend/auth fix, then retrying automatically."
+                }
+
+                // Build log message in steps to keep Swift type-checking predictable.
+                let errorDescription = error.localizedDescription
+                let logLine = "processPendingTranscriptions failed retryable=\(retryable) delaySeconds=\(delaySeconds) attempt=\(deferredTranscriptionRetryAttempt) error=\(errorDescription)"
+                logger.error("\(logLine, privacy: .public)")
+                break
+            }
+        }
+    }
+
+    private func handleSuccessfulTranscription(_ transcript: String) async {
+        lastTranscript = transcript
+        let copyResult = copyTranscriptRespectingLifecycle(transcript)
+        switch copyResult {
+        case .copied:
+            statusMessage = "Stopped. Transcript copied to clipboard."
+            logger.info("transcription completed copyResult=copied transcriptLength=\(transcript.count, privacy: .public)")
+            await notificationService.notifyTranscriptionResult(
+                success: true,
+                body: "Transcript copied to clipboard.",
+                transcriptForCopy: nil
+            )
+        case .deferred:
+            statusMessage = "Stopped. Transcript ready. Tap notification to open app and copy."
+            logger.info("transcription completed copyResult=deferred transcriptLength=\(transcript.count, privacy: .public)")
+            await notificationService.notifyTranscriptionResult(
+                success: true,
+                body: "Transcript ready. Tap Open app & copy.",
+                transcriptForCopy: transcript
+            )
+        case .failed:
+            statusMessage = "Stopped. Transcript ready."
+            logger.info("transcription completed copyResult=failed transcriptLength=\(transcript.count, privacy: .public)")
+            await notificationService.notifyTranscriptionResult(
+                success: true,
+                body: "Transcript is ready.",
+                transcriptForCopy: nil
+            )
+        }
+    }
+
+    private func isRetryableTranscriptionError(_ error: Error) -> Bool {
+        if let apiError = error as? APIClientError {
+            switch apiError {
+            case let .server(_, _, _, retryable):
+                return retryable
+            case .network, .invalidResponse:
+                return true
+            case .invalidAudioFile, .emptyTranscript:
+                return false
+            }
+        }
+        return false
+    }
+
+    private func nextDeferredRetryDelaySeconds(retryable: Bool) -> TimeInterval {
+        guard retryable else { return 60 }
+        // Start fast, then back off to avoid hammering Render/OpenAI during sustained outages.
+        let power = min(deferredTranscriptionRetryAttempt, 6)
+        let exponential = pow(2.0, Double(power))
+        return max(5, min(90, exponential))
+    }
+
+    private func installAudioInterruptionObserver() {
+#if os(iOS)
+        audioInterruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance(),
+            queue: .main
+        ) { [weak self] notification in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                guard self.isRecording else { return }
+
+                let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt ?? 0
+                guard let type = AVAudioSession.InterruptionType(rawValue: rawType),
+                      type == .began else { return }
+
+                // Calls/Siri can preempt the audio session. Auto-stop immediately so
+                // we preserve the already captured audio and push it to transcription.
+                self.logger.info("audio interruption began; auto-stopping active recording")
+                await self.stopRecording()
+            }
+        }
+#endif
     }
 
     private enum ClipboardCopyResult {

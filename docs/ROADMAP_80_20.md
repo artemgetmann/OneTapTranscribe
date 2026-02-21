@@ -30,9 +30,11 @@ Why this is the right tradeoff now:
 - Good enough to ship while platform constraints are investigated.
 
 ## Reliability Rules (Now)
-- Transcription retries transient failures automatically.
-- Retry policy keeps retry window open for at least 30 seconds.
-- Backoff is exponential-ish to survive weak network + Render free-tier cold starts.
+- Every stopped recording is persisted as a pending transcription job before upload starts.
+- Pending jobs are retried automatically and survive app relaunches.
+- Retryable failures (`429`, `5xx`, network) use backoff and keep retrying until success.
+- Audio interruptions (calls/Siri) auto-stop active recording and enqueue captured audio.
+- iOS background limits still apply: retries progress fastest while app process is alive.
 
 ## Next Improvements (Priority Order)
 1. Keep Dynamic Island stop control large and hard to mis-tap.
