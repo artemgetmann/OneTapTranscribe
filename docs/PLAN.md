@@ -1,4 +1,4 @@
-# OneTapTranscribe Execution Plan (App-First)
+# OneTapTranscribe Execution Plan (App-First, v1 Shipped)
 
 ## Why This Plan
 - Shortcut-only is fast but hits a hard UX ceiling: no custom Live Activity/Dynamic Island controls.
@@ -8,7 +8,16 @@
 ## Decision Snapshot
 - Current 80/20 product decision and iOS constraint notes are tracked in `docs/ROADMAP_80_20.md`.
 
-## Current Status (2026-02-19)
+## Ship Status (2026-02-21)
+- v1 is shipped for real usage.
+- Shipping flow:
+1. User taps Control Center start.
+2. App foreground handoff occurs when required by iOS.
+3. User records and stops from Dynamic Island.
+4. Audio transcribes and transcript is copied (or foreground copy handoff notification is shown).
+- True hidden background start from Control Center is moved to R&D backlog.
+
+## Current Status (2026-02-21)
 - iOS app target builds and runs with Live Activity widget extension embedded.
 - Control Center start action is wired through App Intent and currently prioritizes reliability by foregrounding app on start.
 - Dynamic Island / lock-screen UI includes stop controls that work from Live Activity surfaces.
@@ -17,8 +26,8 @@
 - Cloud readiness is prepared: runtime backend URL/token settings in app and hosting guide in `docs/HOSTING.md`.
 
 ## Immediate Next Moves (High Leverage)
-1. Replace deep-link stop with full background-safe App Intent + app group command channel.
-2. Persist `TranscriptionQueue` to disk (survive app kill/relaunch).
+1. Gather real-world usage feedback from daily iPhone use and rank friction points.
+2. Tighten copy/transcription status messaging for edge-case background handoffs.
 3. Add deterministic failure UI states for auth errors (401/403) vs retryable network/server errors.
 4. Add a strict device QA script and capture baseline metrics:
    - stop-to-transcript latency
@@ -184,7 +193,7 @@ Acceptance:
   - Mitigation: keep stop action minimal and route through central state store.
 
 ## Deferred / Lower Priority
-- Share Sheet transcription shortcut flow and expanded cross-device QA checklist are moved to `docs/LOW_PRIORITY_BACKLOG.md`.
+- Share Sheet transcription shortcut flow, true background start R&D, and expanded cross-device QA checklist are moved to `docs/LOW_PRIORITY_BACKLOG.md`.
 - Reason:
 1. They do not block the app-first MVP loop (record -> transcribe -> clipboard).
 2. They are leverage items to improve adoption and test discipline after base stability.

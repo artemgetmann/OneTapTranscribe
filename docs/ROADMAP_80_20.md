@@ -29,6 +29,11 @@ Why this is the right tradeoff now:
 - Still keeps interaction very short.
 - Good enough to ship while platform constraints are investigated.
 
+## Shipping Decision (2026-02-21)
+- Marked as shipped with the reliable foreground-handoff flow.
+- Product uses this as the default behavior in real usage.
+- True hidden background start from Control Center is explicitly moved to R&D/backlog.
+
 ## Reliability Rules (Now)
 - Every stopped recording is persisted as a pending transcription job before upload starts.
 - Pending jobs are retried automatically and survive app relaunches.
